@@ -22,6 +22,23 @@ Node + tsx — it runs anywhere.
    ```
 4. **Copy results back** (the printed report, or scp `tools/ladder.json`).
 
+## Concrete options & costs (2026-06-26 research)
+- **Default (low-friction):** Hetzner Cloud CCX (**EU** region — free egress; US includes only 1 TB)
+  or OVH c3, on-demand ~$0.03/vCPU-hr, no spot interruptions. **64 vCPU × 4h ≈ $7.** One-command
+  spin-up via `hcloud`/snapshot + cloud-init.
+- **Cheapest (long data-gen):** GCP c2d/c3 or AWS c6i **spot** ~$0.01/vCPU-hr (~$3 for 64 vCPU × 4h),
+  *but* shard into idempotent ≤30-min chunks (preemption re-queues a chunk) and keep data in-cloud /
+  compressed (hyperscaler egress ~$0.09–0.12/GB).
+- **Buy a box only if sustained:** breakeven vs renting is ~1,000–3,000 hours (a used dual-EPYC 7V12 =
+  128 cores ~$1.5–2.3k). Not worth it for bursty use.
+
+## Performance tip — pre-compile TS, don't run `tsx` per worker
+`tsx`/esbuild strips types per process (~50 ms startup) and skips no JIT-relevant optimization, so for
+a many-short-process sim/data-gen farm, do an ahead-of-time build (`tsc`/esbuild) and run `node out.js`
+directly — one process per **physical** core. Bake Node + pnpm + the pnpm store into the box snapshot
+(`pnpm fetch` + `pnpm install --offline`) so launch is near-instant. (The interactive `pnpm eval`/
+`pnpm ladder` on `tsx` is fine; this matters only at fleet scale.)
+
 ## Stopgap (no cloud yet)
 Throttle local runs so the dev machine stays usable: `pnpm eval <a> <b> <N> --jobs=6`
 (leaves cores free; slower but non-saturating).

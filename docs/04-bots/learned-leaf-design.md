@@ -80,8 +80,18 @@ compute. **Only if Phase 1 plateaus below the external benchmark.** Its own ADR 
 - **TS/PyTorch inference drift** → parity test.
 - **Scope creep into full RL** → Phase 2 is explicitly deferred with its own ADR + go/no-go.
 
-## 8. Compute (see ADR-0009 + the 2026-06-26 compute research)
-- Phase 1 **data-gen**: cloud CPU burst (cheaper post-engine-opt). Phase 1 **training**: one modest
-  GPU, short/cheap (or CPU for a model this small). Phase 2 (if ever): real RL compute — separate.
-- Concrete provider/cost options are being gathered (CPU + GPU research agents, 2026-06-26); the
-  findings land in this section.
+## 8. Compute — Phase 1 is cheap (single-digit $, possibly $0). Research 2026-06-26; see ADR-0009.
+- **Data-gen (CPU burst):** millions of self-play positions = a few hours on a many-core box.
+  - Low-friction: **Hetzner Cloud CCX (EU) or OVH c3** on-demand, ~$0.03/vCPU-hr, hourly, no spot
+    interruptions, free/cheap EU egress → **64 vCPU × 4h ≈ $7**.
+  - Cheapest: **GCP/AWS spot** ~$0.01/vCPU-hr (~$3 for the same), IF the job is sharded into
+    idempotent ≤30-min chunks writing to object storage (preemption just re-queues a chunk) and data
+    stays in-cloud / compressed (egress ~$0.09–0.12/GB on the hyperscalers).
+  - Or **$0**: run it locally overnight — the engine is 2.6× faster now (~1635 deals/s/core).
+  - Build tip: **pre-compile TS→JS (`tsc`/esbuild) and run `node` directly** in the data-gen farm,
+    one process per physical core — skip the ~50ms/worker `tsx` startup. Bake Node+pnpm-store into a
+    snapshot for one-command spin-up.
+- **Training (GPU):** **~$0.** A small MLP on a few M rows trains in ~3–7 min on a free **Kaggle**
+  T4 (≈30 GPU-hr/week free) or ~15–45 min on a local multi-core CPU. A GPU is optional at this size.
+- **Total Phase 1: ~$0–10.** Phase 2 (RL self-play improvement loop) is the only step that would mean
+  real sustained compute — and it's explicitly deferred to its own ADR.
