@@ -15,6 +15,7 @@ import { dirname } from "node:path";
 import {
   makeRng,
   createDeal,
+  cloneState,
   applyMove,
   isTerminal,
   observe,
@@ -24,6 +25,7 @@ import {
   nextInt,
   type GameState,
   type Player,
+  type Rng,
 } from "@guandan/engine";
 import { heuristicBot } from "@guandan/bots";
 import { encodeState, FEATURE_SIZE } from "@guandan/nn";
@@ -38,6 +40,18 @@ function dealValue(finish: Player[], team: number): number {
   return winTeam === team ? mag : -mag;
 }
 
+/** One heuristic playout from `st` to the deal's end; returns team 0's deal value. */
+function rolloutValue0(st: GameState, rng: Rng): number {
+  let s = cloneState(st);
+  let guard = 0;
+  while (!isTerminal(s)) {
+    const seat = s.toAct;
+    s = applyMove(s, heuristicBot(observe(s, seat), legalMoves(s, seat), rng));
+    if (++guard > 100000) throw new Error("rollout did not terminate");
+  }
+  return dealValue(result(s), 0);
+}
+
 const argv = process.argv.slice(2);
 const positional = argv.filter((a) => !a.startsWith("--"));
 const seedIdx = argv.indexOf("--seed");
@@ -46,6 +60,10 @@ const seed = seedIdx !== -1 ? Number(argv[seedIdx + 1]) : 1;
 const deals = positional[0] ? Number(positional[0]) : 20000;
 const samplesPerDeal = positional[1] ? Number(positional[1]) : 10;
 const outPath = positional[2] ?? "data/value.bin";
+// K heuristic rollouts per sampled state → averaged label (distills the rollout leaf's expected
+// value; much cleaner than the single self-play outcome). 0 = use the single actual deal outcome.
+const rolloutIdx = argv.indexOf("--rollouts");
+const rollouts = rolloutIdx !== -1 ? Number(argv[rolloutIdx + 1]) : 0;
 
 const stride = FEATURE_SIZE + 1;
 const maxRows = deals * samplesPerDeal * 2; // 2 team perspectives per sampled position
@@ -66,16 +84,26 @@ for (let d = 0; d < deals; d++) {
   }
   const finish = result(s);
 
-  // Sample positions from this deal and emit one example per team (the encoder is team-relative,
-  // so (state, team0) and (state, team1) are two distinct, equally-valid training rows).
+  // Sample positions and emit one example per team. The label is either the single actual deal
+  // outcome (cheap, noisy) or the average of K fresh rollouts from THAT state (cleaner; distills the
+  // rollout leaf). team-1 value is exactly −(team-0 value), so one label set covers both rows.
   const n = snapshots.length;
   const take = Math.min(samplesPerDeal, n);
   for (let k = 0; k < take; k++) {
     const st = snapshots[nextInt(rng, n)] as GameState;
+    let v0: number;
+    if (rollouts > 0) {
+      const rrng = makeRng(1_000_000 + d * 131 + k * 977);
+      let acc = 0;
+      for (let j = 0; j < rollouts; j++) acc += rolloutValue0(st, rrng);
+      v0 = acc / rollouts;
+    } else {
+      v0 = dealValue(finish, 0);
+    }
     for (let team = 0; team < 2; team++) {
       const base = rows * stride;
       buf.set(encodeState(st, team), base);
-      buf[base + FEATURE_SIZE] = dealValue(finish, team);
+      buf[base + FEATURE_SIZE] = team === 0 ? v0 : -v0;
       rows++;
     }
   }

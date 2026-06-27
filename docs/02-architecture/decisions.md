@@ -3,8 +3,15 @@
 Append-only. Newest at top. Each entry: date, decision, why, alternatives, status.
 
 ---
-## ADR-0010 — Learned leaf via supervised DISTILLATION first (not RL self-play)  ⟨PROPOSED⟩
-**Date:** 2026-06-26 · **Status:** **PROPOSED (awaiting human approval — do not build yet)**
+## ADR-0010 — Learned leaf via supervised DISTILLATION first (not RL self-play)
+**Date:** 2026-06-26 · **Status:** **Phase 1 BUILT & EXPLORED (2026-06-27) — inconclusive; Phase 2 deferred**
+**Phase 1 result:** the full pipeline was built in pure TS and works, but a simple net (lossy
+count-based encoding + small MLP) is **not a reliably strong leaf** — `ismcts-learned` lands around
+`pimc-static` strength and swings with the net (54%→23% vs pimc-static across two label schemes), well
+short of the rollout champion. The bottleneck is **encoding richness + capacity**, not label noise.
+**Phase 2** (richer encoding + bigger net + likely self-play RL) remains the path to a champion-class
+fast leaf, and stays **deferred pending a human go/no-go** (it's the expensive route). Detail:
+`docs/04-bots/learned-leaf-design.md` + changelog 2026-06-27.
 **Decision (proposed):** Break the champion's seconds/move ceiling with a **learned value net** used
 as the ISMCTS leaf, trained by **supervised distillation of the existing heuristic-rollout leaf** —
 NOT by reinforcement-learning self-play. Generate `(determinized full state, deal-outcome value)`

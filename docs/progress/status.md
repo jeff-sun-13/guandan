@@ -153,11 +153,12 @@ Campaign next steps (after infra), in rough order:
 1. ✅ **Engine throughput (task #4) — DONE (2026-06-26):** `legalMoves` type-routing + bomb
    short-circuit, output-identical, **~2.6× full-playout** (635→1635 deals/s). Cuts eval cost + CPU
    load directly. Optional further lever: typed-array `analyze` (constant-factor).
-2. **Learned leaf/value net (task #10; reopens training, ADR-0007/0008/0009).** The rollout leaf
-   is what makes the champion strong AND slow. A learned value net that approximates the rollout's
-   judgement in ~µs would give strength AND interactive speed — the natural ceiling-breaker now that
-   pure search + a heuristic leaf is proven. The DanZero encoding (`06-prior-art/danzero.md`) is a
-   ready feature set. This is a real compute/infra decision — its own ADR.
+2. ◑ **Learned leaf (task #10) — Phase 1 BUILT & EXPLORED (2026-06-27), inconclusive.** Full pipeline
+   in pure TS works (`@guandan/nn`, `pnpm gen-data`/`train`, `ismcts-learned`), but a simple net is
+   only ~`pimc-static` strength & finicky (not champion-class). Bottleneck = encoding richness +
+   capacity. **Phase 2** (richer encoding + bigger net + self-play RL) is the expensive ceiling
+   pursuit — DEFERRED pending a human go/no-go (ADR-0010). **Reframe:** the rollout champion's
+   seconds/move is fine for actual human play, so this isn't a blocker for the play goal.
 3. **History-threading architecture (future, own ADR)** — unlock belief's BIGGER signals (cross-trick
    passing, **tribute-as-deduction**, GS2 diversity sampler) by giving bots the public play history,
    which the pure-Observation design withholds. Decide where it lives (richer Observation vs

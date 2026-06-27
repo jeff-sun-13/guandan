@@ -43,6 +43,30 @@ Append-only, newest at top. One entry per working session. Format:
   #3 external benchmark (off-baseline yardstick, needs the human's machine). No code/engine changes.
 
 ---
+## 2026-06-27 — Learned leaf (ADR-0010 Phase 1): pipeline works, but a simple net isn't champion-class
+- Built the **entire learned-leaf pipeline in pure TS/Node** (autonomous — no Python/GPU/Kaggle, since
+  the net is tiny): `@guandan/nn` (state `encodeState` → 86 features; an `MLP` with a hand-written
+  Adam trainer + JSON serialize), `tools/gen-data.ts` (self-play → labeled dataset), `tools/train.ts`
+  (train + export weights), `bots/learned-leaf.ts` (a trained net as a `LeafEvaluator`); registry adds
+  `ismcts-learned`/`pimc-learned` when weights exist. **134 tests green** (incl. a trainer test that
+  only passes if forward+backprop+Adam are all correct). Committed as reusable infra.
+- **Result — works, fast, but NOT champion-class and finicky.** The net learns real signal (val RMSE
+  **1.61 vs 2.36** baseline) and `ismcts-learned` is **~20× faster than the rollout champion**
+  (UI-viable). But its play strength is only ~`pimc-static` and swings with the net: single-outcome
+  labels → **54%** vs pimc-static (n=48, inconclusive); averaged-rollout labels → **23%** (worse). A
+  simple **lossy count-based encoding + small MLP is not a reliably strong leaf.**
+- **Diagnosis:** the bottleneck is the **encoding** (card counts + trick state discard tactical
+  structure — which straight, who-can-beat-what) + net capacity, NOT label noise (cleaner
+  averaged-rollout labels didn't lower RMSE). Closing the gap to the rollout leaf needs **Phase 2**
+  (richer encoding + bigger net + likely self-play RL) — the expensive path, deferred pending a human
+  decision (ADR-0010).
+- **Reframe (matters for the goal):** for the human pair actually PLAYING the bots, the rollout
+  champion's "seconds/move" is **fine in a real game** (humans take seconds too). So the learned
+  leaf's extreme speed is mainly for self-play/eval THROUGHPUT, not for sit-down play — the champion
+  is already usable for the goal. The strong-but-slow vs fast-but-weaker tradeoff is real but doesn't
+  block playing.
+
+---
 ## 2026-06-26 — NEW CHAMPION (bot v2.3): ISMCTS + belief + rollout leaf beats pimc-static ~82%
 - The v2 thesis test, and it **passed decisively.** `ismcts-rollout` = ISMCTS over infosets +
   belief-conditioned sampling + a heuristic **rollout leaf** (full-deal signal) — the complete "good
