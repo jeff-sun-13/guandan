@@ -1,0 +1,15 @@
+# Normalize line endings: store LF in the repo. This project also runs on Linux cloud eval boxes
+# (ADR-0009), and the Node toolchain handles LF fine on Windows — so LF everywhere avoids CRLF churn.
+* text=auto eol=lf
+
+# Shell scripts MUST be LF (they run on the Linux eval boxes).
+*.sh text eol=lf
+
+# Binary assets — never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
