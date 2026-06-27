@@ -15,6 +15,8 @@ Two layers of docs. Know which kind you're touching.
 - `04-bots/roadmap.md` — the bot ladder (v0→v3) and how the engine must support it.
 - `04-bots/v2-search-design.md` — the concrete engineering plan for **bot v2** (client-side
   determinized search / ISMCTS), incl. engine prerequisites and measured perf budget. See ADR-0007.
+- `04-bots/learned-leaf-design.md` — **proposal** for the learned value-net leaf (distill the rollout
+  → µs inference; strength + interactive speed). Awaiting approval; see ADR-0010 (Proposed).
 - `05-frontend/design.md` — UI/UX principles, mobile-first notes.
 - `06-prior-art/` — **everything we know about other people's Guandan bots** (the two DanZero
   papers, their public code, our friend's guandan.cards bot) + our blunt analysis of why they

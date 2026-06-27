@@ -3,6 +3,30 @@
 Append-only. Newest at top. Each entry: date, decision, why, alternatives, status.
 
 ---
+## ADR-0010 — Learned leaf via supervised DISTILLATION first (not RL self-play)  ⟨PROPOSED⟩
+**Date:** 2026-06-26 · **Status:** **PROPOSED (awaiting human approval — do not build yet)**
+**Decision (proposed):** Break the champion's seconds/move ceiling with a **learned value net** used
+as the ISMCTS leaf, trained by **supervised distillation of the existing heuristic-rollout leaf** —
+NOT by reinforcement-learning self-play. Generate `(determinized full state, deal-outcome value)`
+pairs from self-play, regress a **small MLP**, export weights, and **reimplement the forward pass in
+TypeScript** (µs inference, no ONNX/tf.js) behind the existing `LeafEvaluator` seam. Encoding +
+inference live in a new pure-TS `packages/nn`; the engine stays pure. Full plan:
+`docs/04-bots/learned-leaf-design.md`. A self-play *improvement loop* (the expensive RL regime) is
+**Phase 2, explicitly deferred** to its own future ADR.
+**Why:** The rollout leaf is what makes `ismcts-rollout` both strong and slow. A net that approximates
+it in microseconds gives **strength AND interactive speed**. Distillation is cheap (a few M positions,
+a small net — hours on one modest GPU, or CPU), unlike DanZero's ~30 CPU-weeks of RL — so we get most
+of the upside without the deferred-training cost the human was wary of.
+**Alternatives:** (a) Full DMC/RL self-play now (DanZero/GS2 style) — rejected as Phase 1; expensive,
+unnecessary to first beat our own rollout. (b) Keep iterating pure search/heuristics — lower ceiling,
+and doesn't fix the speed. (c) Ship ONNX/tf.js inference — rejected; per-call overhead blows the µs
+leaf budget; a hand-rolled small-MLP forward pass is faster and dependency-free.
+**Gates before it can replace anything:** TS↔PyTorch parity test; must match/beat `ismcts-rollout` on
+the ladder at far lower cost; validate vs the external benchmark (task #3) to catch self-play overfit.
+**Revisit / escalate when:** Phase 1 plateaus below strong external play → open a Phase-2 ADR for the
+self-play improvement loop (the real RL compute decision).
+
+---
 ## ADR-0009 — Compute strategy: git → cloud eval boxes; optimize the TS engine (no native rewrite yet)
 **Date:** 2026-06-26 · **Status:** Accepted
 **Decision:** (a) Put the project under **git** and push to a remote, so any machine can clone it.
