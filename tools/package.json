@@ -7,11 +7,14 @@
     "eval": "tsx eval.ts",
     "ladder": "tsx ladder.ts",
     "bench": "tsx bench.ts",
+    "gen-data": "tsx gen-data.ts",
+    "train": "tsx train.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@guandan/engine": "workspace:*",
-    "@guandan/bots": "workspace:*"
+    "@guandan/bots": "workspace:*",
+    "@guandan/nn": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

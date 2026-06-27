@@ -2,3 +2,12 @@
 // Pure TS, no runtime deps beyond the engine; the trained weights are loaded as plain data.
 
 export { encodeState, FEATURE_SIZE } from "./encode";
+export {
+  type MLP,
+  type FitOptions,
+  initMLP,
+  predict,
+  fit,
+  mlpToJSON,
+  mlpFromJSON,
+} from "./mlp";

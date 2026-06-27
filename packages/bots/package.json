@@ -13,7 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@guandan/engine": "workspace:*"
+    "@guandan/engine": "workspace:*",
+    "@guandan/nn": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

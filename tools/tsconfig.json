@@ -3,7 +3,10 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
-    "types": ["node"]
+    "types": ["node"],
+    // gen-data.ts / train.ts do dense numeric typed-array indexing where the strict-index check is
+    // just noise (and only relevant in these CLI scripts, not the engine/bots).
+    "noUncheckedIndexedAccess": false
   },
   "include": ["."]
 }

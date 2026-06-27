@@ -15,6 +15,7 @@ export { randomBot } from "./random";
 export { heuristicBot } from "./heuristic";
 export { pimcBot, pimcStaticBot, makePimcBot, staticLeaf, type PimcOptions, type LeafEvaluator } from "./pimc";
 export { ismctsBot, makeIsmctsBot, type IsmctsOptions } from "./ismcts";
+export { makeLearnedLeaf } from "./learned-leaf";
 export { makeBeliefSampler, beliefSampler, currentTrickPassers, type Sampler, type BeliefOptions } from "./belief";
 export { staticDealValue, playsToEmpty, bombCount } from "./static-eval";
 export { playMatch, type MatchOutcome } from "./arena";

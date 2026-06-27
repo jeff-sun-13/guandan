@@ -5,6 +5,9 @@
 // Add new bots here as the ladder grows (v2 MCTS, belief sampling, …); the ladder picks them up
 // automatically and every new bot should beat the previous one (docs/04-bots/roadmap.md).
 
+import { readFileSync, existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import {
   randomBot,
   heuristicBot,
@@ -13,8 +16,10 @@ import {
   staticLeaf,
   makeIsmctsBot,
   makeBeliefSampler,
+  makeLearnedLeaf,
   type NamedBot,
 } from "@guandan/bots";
+import { mlpFromJSON } from "@guandan/nn";
 
 // Belief-conditioned determinization (bot v2 step 4) — shared by the -belief variants below.
 const belief = makeBeliefSampler();
@@ -50,6 +55,22 @@ export const REGISTRY: Record<string, NamedBot> = {
     bot: makeIsmctsBot({ iterations: 150, rollout: true, sampler: belief }),
   },
 };
+
+// Learned-leaf bots (bot v2.4, ADR-0010) — registered only if a trained net exists. The learned leaf
+// is ~µs (vs the rollout's ~0.6ms), so ismcts-learned runs at static-leaf speed but, if the net is
+// good, with rollout-class judgement. Train one with `pnpm gen-data` + `pnpm train`.
+const WEIGHTS = join(dirname(fileURLToPath(import.meta.url)), "data", "value-weights.json");
+if (existsSync(WEIGHTS)) {
+  const learnedLeaf = makeLearnedLeaf(mlpFromJSON(readFileSync(WEIGHTS, "utf8")));
+  REGISTRY["ismcts-learned"] = {
+    name: "ismcts-learned",
+    bot: makeIsmctsBot({ iterations: 600, sampler: belief, leaf: learnedLeaf }),
+  };
+  REGISTRY["pimc-learned"] = {
+    name: "pimc-learned",
+    bot: makePimcBot({ leaf: learnedLeaf, determinizations: 100, maxCandidates: 24, sampler: belief }),
+  };
+}
 
 /** Resolve a bot name to its NamedBot, or exit with a helpful message. */
 export function resolveBot(name: string): NamedBot {

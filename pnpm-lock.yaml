@@ -48,6 +48,9 @@ importers:
       '@guandan/engine':
         specifier: workspace:*
         version: link:../engine
+      '@guandan/nn':
+        specifier: workspace:*
+        version: link:../nn
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -86,6 +89,9 @@ importers:
       '@guandan/engine':
         specifier: workspace:*
         version: link:../packages/engine
+      '@guandan/nn':
+        specifier: workspace:*
+        version: link:../packages/nn
     devDependencies:
       '@types/node':
         specifier: ^22.10.0

@@ -9,6 +9,8 @@
     "eval": "pnpm --filter @guandan/tools eval",
     "ladder": "pnpm --filter @guandan/tools ladder",
     "bench": "pnpm --filter @guandan/tools bench",
+    "gen-data": "pnpm --filter @guandan/tools gen-data",
+    "train": "pnpm --filter @guandan/tools train",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test"
   },

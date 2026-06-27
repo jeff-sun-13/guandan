@@ -1,0 +1,93 @@
+// Train the value/leaf net on a generated dataset (ADR-0010, step 3). Pure TS/Node — no Python.
+// Loads the binary dataset, standardizes features, trains a small MLP with a train/val split, and
+// exports the weights as JSON for the inference leaf.
+//
+// Usage:
+//   pnpm train [dataPath] [outWeights] [--epochs N] [--lr X]
+//   pnpm train data/value.bin data/value-weights.json --epochs 40
+
+import { readFileSync, writeFileSync } from "node:fs";
+import { makeRng } from "@guandan/engine";
+import { initMLP, fit, predict, mlpToJSON } from "@guandan/nn";
+
+const argv = process.argv.slice(2);
+const positional = argv.filter((a) => !a.startsWith("--"));
+const opt = (k: string, d: number) => {
+  const i = argv.indexOf(`--${k}`);
+  return i !== -1 ? Number(argv[i + 1]) : d;
+};
+const dataPath = positional[0] ?? "data/value.bin";
+const outPath = positional[1] ?? "data/value-weights.json";
+const epochs = opt("epochs", 40);
+const lr = opt("lr", 1e-3);
+
+const meta = JSON.parse(readFileSync(`${dataPath}.meta.json`, "utf8"));
+const inN: number = meta.featureSize;
+const stride: number = meta.stride;
+const n: number = meta.rows;
+
+// Load the flat float32 [features…, label] rows and split into X / Y.
+const raw = readFileSync(dataPath);
+const all = new Float32Array(raw.buffer, raw.byteOffset, Math.floor(raw.byteLength / 4));
+const X = new Float32Array(n * inN);
+const Y = new Float32Array(n);
+for (let r = 0; r < n; r++) {
+  for (let i = 0; i < inN; i++) X[r * inN + i] = all[r * stride + i];
+  Y[r] = all[r * stride + inN];
+}
+
+// Feature standardization stats.
+const mean = new Float32Array(inN);
+const std = new Float32Array(inN);
+for (let r = 0; r < n; r++) for (let i = 0; i < inN; i++) mean[i] += X[r * inN + i];
+for (let i = 0; i < inN; i++) mean[i] /= n;
+for (let r = 0; r < n; r++) for (let i = 0; i < inN; i++) { const d = X[r * inN + i] - mean[i]; std[i] += d * d; }
+for (let i = 0; i < inN; i++) std[i] = Math.sqrt(std[i] / n) || 1; // guard constant features
+
+// Standardized features + normalized labels (value ∈ ±3 → ±1).
+const labelScale = 3;
+const Xs = new Float32Array(n * inN);
+for (let r = 0; r < n; r++) for (let i = 0; i < inN; i++) Xs[r * inN + i] = (X[r * inN + i] - mean[i]) / std[i];
+const Yn = new Float32Array(n);
+for (let r = 0; r < n; r++) Yn[r] = Y[r] / labelScale;
+
+// Train/val split (val = last 10%).
+const nVal = Math.floor(n * 0.1);
+const nTr = n - nVal;
+
+// Baseline: RMSE of always predicting the mean label (what the net must beat).
+let yMean = 0;
+for (let r = nTr; r < n; r++) yMean += Y[r];
+yMean /= Math.max(1, nVal);
+let baseSSE = 0;
+for (let r = nTr; r < n; r++) baseSSE += (Y[r] - yMean) ** 2;
+const baseRMSE = Math.sqrt(baseSSE / Math.max(1, nVal));
+
+const valRMSE = (): number => {
+  let sse = 0;
+  for (let r = nTr; r < n; r++) sse += (predict(net, X.subarray(r * inN, (r + 1) * inN)) - Y[r]) ** 2;
+  return Math.sqrt(sse / Math.max(1, nVal));
+};
+
+const net = initMLP([inN, 64, 32, 1], makeRng(1));
+net.mean = mean;
+net.std = std;
+net.labelScale = labelScale;
+
+console.log(`\nTraining on ${nTr} rows (val ${nVal}); ${inN} features; baseline val RMSE ${baseRMSE.toFixed(3)} (predict-mean)\n`);
+const t0 = Date.now();
+fit(net, Xs.subarray(0, nTr * inN), Yn.subarray(0, nTr), {
+  epochs,
+  batchSize: 256,
+  lr,
+  rng: makeRng(2),
+  onEpoch: (e) => {
+    if ((e + 1) % 5 === 0 || e === 0) console.log(`  epoch ${e + 1}/${epochs}  val RMSE ${valRMSE().toFixed(3)}`);
+  },
+});
+
+writeFileSync(outPath, mlpToJSON(net));
+console.log(
+  `\nDone in ${((Date.now() - t0) / 1000).toFixed(1)}s. Final val RMSE ${valRMSE().toFixed(3)} ` +
+    `vs baseline ${baseRMSE.toFixed(3)} → ${outPath}`,
+);
