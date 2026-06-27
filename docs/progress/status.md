@@ -150,11 +150,9 @@ the human: final product only, at the end. The champion is now `ismcts-rollout`.
   Stopgap: `pnpm eval … --jobs=6`.
 
 Campaign next steps (after infra), in rough order:
-1. **Engine throughput (task #4) — now the highest-value in-repo lever.** The champion is seconds/move
-   because it does ~150 full heuristic rollouts/decision, and `legalMoves` (21.5µs, the hot path per
-   `pnpm bench`) dominates a rollout. A rank-count/bitset re-encoding speeds EVERY rollout → either a
-   faster champion or more iterations/depth at the same budget. Keep the engine pure; gate on the 88
-   engine tests + a `pnpm bench` delta.
+1. ✅ **Engine throughput (task #4) — DONE (2026-06-26):** `legalMoves` type-routing + bomb
+   short-circuit, output-identical, **~2.6× full-playout** (635→1635 deals/s). Cuts eval cost + CPU
+   load directly. Optional further lever: typed-array `analyze` (constant-factor).
 2. **Learned leaf/value net (task #10; reopens training, ADR-0007/0008/0009).** The rollout leaf
    is what makes the champion strong AND slow. A learned value net that approximates the rollout's
    judgement in ~µs would give strength AND interactive speed — the natural ceiling-breaker now that

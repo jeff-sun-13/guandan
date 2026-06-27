@@ -48,17 +48,23 @@ This doc describes the *shape* of the code, not the rules themselves.
 - Golden/replay tests: record full games by seed and assert stable outcomes.
 - Resolve every ⚠️ in `rules.md` with a corresponding test once confirmed.
 
-## Performance (measured 2026-06-25 via `pnpm bench`, `tools/bench.ts`)
-- Full random playout: **~1.58 ms/deal** (~143 moves) → **635 deals/s** single-threaded (Node).
-- `legalMoves` on a fresh 27-card hand: **21.5 µs/call** — the hot path (confirms the `gotchas.md`
-  wild-enumeration prediction); cheaper as hands deplete.
-- `applyMove` 0.68 µs · `cloneState` 0.09 µs — cheap; cloning is not the bottleneck, enumeration is.
-- Budget guide: ~127 full rollouts per 200 ms move. Enough to start PIMC; full random rollouts are
-  the cost driver, so search uses a heuristic leaf and caps candidates (`04-bots/v2-search-design.md`).
+## Performance (measured via `pnpm bench`, `tools/bench.ts`)
+**After the `legalMoves` routing optimization (2026-06-26):**
+- Full random playout: **~0.61 ms/deal** (~143 moves) → **~1635 deals/s** single-threaded (Node) —
+  **~2.6× faster** than the 2026-06-25 baseline (635 deals/s).
+- `legalMoves` on a fresh 27-card hand (leading): **~15 µs/call** (was 21.5 µs; bomb short-circuit).
+  The bigger win is on FOLLOWING calls (the majority in a rollout), which now enumerate only the
+  types that can beat the top instead of everything — output-identical (`moves.ts`, ADR-0004 note).
+- `applyMove` ~0.5 µs · `cloneState` ~0.06 µs — cheap; enumeration was the bottleneck.
+- Budget guide: **~322 full rollouts per 200 ms** move (was ~127). Directly cuts the rollout-leaf
+  champion's cost and eval CPU (ADR-0009).
+- _Baseline (2026-06-25, pre-optimization): 1.58 ms/deal, 635 deals/s, legalMoves 21.5 µs, ~127
+  rollouts/200 ms._
 
 ## Open design questions
-- Exact card/hand encoding (integers vs bitsets) — **now benchmarkable** (`pnpm bench`). The lever
-  for faster search is `legalMoves`/wild enumeration (rank-count/bitset). Not blocking v2.
+- Exact card/hand encoding (integers vs bitsets). The first `legalMoves` lever — **type-routing for
+  following + bomb short-circuit — is DONE (2026-06-26, ~2.6× full-playout)**. A further lever remains:
+  replace the Map-based `analyze` with typed-array rank counts (constant-factor; output-identical).
 - How to represent wild-card combos canonically (a wild can stand for many things).
 - Where tribute/return logic lives (likely a `match.ts` layer above single-deal `deal.ts`).
   *(Resolved: `match.ts` + `tribute.ts` exist.)*

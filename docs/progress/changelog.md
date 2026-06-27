@@ -4,6 +4,26 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-06-26 — Engine throughput: legalMoves type-routing → ~2.6× faster playouts (output-identical)
+- Optimized the engine's hottest function, `legalMoves` (`packages/engine/src/moves.ts`), the #1
+  compute lever (the rollout-leaf champion calls it ~143×/deal × ~150 rollouts/move). Two changes,
+  both **provably output-identical** (same moves, same order, same card ids):
+  1. **Type-routed following.** When following a trick, only enumerate the combo types that can beat
+     the top — the top's own type (if non-bomb) + the bomb types — instead of enumerating ALL types
+     then filtering. Skipped types would fail the `beats` filter anyway, so it's equivalent; it skips
+     the expensive enumerations (notably the full-house double loop) on the majority of calls.
+  2. **Bomb short-circuit.** The numeric-bomb loop skips ranks that can't reach size n
+     (naturalCount + wilds < n) instead of blindly assembling all 4..10 of every rank.
+- **Safety:** new equivalence property test (`moves-equivalence.test.ts`) asserts the optimized
+  `legalMoves` is byte-identical to the old "enumerate-all + filter" oracle for ALL FOUR seats at
+  every ply of 40 random deals (leading + every following top-type). So **no recorded eval result
+  shifts** — the champion picks the same moves, just faster. 89 engine + 38 bots = **127 tests green**.
+- **Measured (`pnpm bench`):** full random playout **635 → ~1635 deals/s (~2.6×)**; `legalMoves` fresh
+  hand 21.5 → ~15 µs; **~322 vs ~127 full rollouts per 200 ms**. Directly cuts eval wall-time + the
+  dev-machine CPU load the human flagged (ADR-0009). Updated the perf tables in `03-engine/design.md`
+  + `04-bots/v2-search-design.md`. A further lever remains: typed-array `analyze` (constant-factor).
+
+---
 ## 2026-06-26 — Infra decisions: git + cloud eval compute (ADR-0009); roadmap reaffirmed
 - Human flagged that local evals strain the dev machine (correct — the parallel harness pins every
   core, by design) and asked to solve compute properly + put the project under git. Locked the

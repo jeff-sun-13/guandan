@@ -3,12 +3,18 @@
 // call it at every node of a search — so it enumerates by combo TYPE rather than over the
 // 2^27 subsets of a hand.
 //
+// PERF (the hot path for search bots): two optimizations that DO NOT change the output (same
+// moves, same order, same card ids — verified by an equivalence property test):
+//   1. When FOLLOWING a trick, only enumerate the combo types that can possibly beat the top —
+//      the top's own type (if it's not a bomb) plus the bomb types (bombs/SF/joker bomb beat any
+//      non-bomb). Every other type would be dropped by the `beats` filter anyway, so skipping it
+//      is equivalent — and skips the expensive enumerations (e.g. the full-house double loop).
+//   2. The numeric-bomb loop skips ranks that can't reach a given bomb size (natural count + wilds
+//      < n), instead of blindly trying to assemble all 4..10 of every rank.
+//
 // WILD POLICY (documented limitation): each distinct (type, rank, length) play is emitted once,
-// using the FEWEST wild cards necessary (naturals first). So we offer "pair of 8s" using two
-// natural 8s rather than spending a wild, when possible. We do NOT currently also emit the
-// wild-spending variant of a play that's already formable without wilds. That keeps the move
-// list compact and is fine for the v0/v1 bots; a later pass can surface wild-spend variants if
-// a stronger bot benefits. See docs/03-engine/design.md.
+// using the FEWEST wild cards necessary (naturals first). We do NOT also emit the wild-spending
+// variant of a play already formable without wilds. See docs/03-engine/design.md and ADR-0004.
 
 import {
   type Card,
@@ -23,6 +29,7 @@ import {
 import {
   type Combo,
   type ComboType,
+  isBomb,
   beats,
   pointValue,
   STRAIGHT_WINDOWS,
@@ -117,10 +124,45 @@ function makeCombo(type: ComboType, rank: number, cards: Card[]): Combo {
 }
 
 /**
- * Every distinct combo playable from `hand` at `level`, one per (type, rank, length).
+ * Which combo TYPES to enumerate. All true = the full move set (leading). When following, only the
+ * types that can beat the current top are turned on (see `wantsForBeating`); the rest are skipped
+ * because they'd be filtered out by `beats` anyway. `straight` and `straightFlush` are independent
+ * flags even though they share one enumeration loop.
  */
-export function enumerateCombos(hand: Card[], level: number): Move[] {
+interface TypeWants {
+  single: boolean;
+  pair: boolean;
+  triple: boolean;
+  fullHouse: boolean;
+  straight: boolean;
+  straightFlush: boolean;
+  tube: boolean;
+  plate: boolean;
+  bomb: boolean;
+  jokerBomb: boolean;
+}
+
+const ALL_TYPES: TypeWants = {
+  single: true,
+  pair: true,
+  triple: true,
+  fullHouse: true,
+  straight: true,
+  straightFlush: true,
+  tube: true,
+  plate: true,
+  bomb: true,
+  jokerBomb: true,
+};
+
+/**
+ * Every distinct combo of the wanted types playable from `hand` at `level`, one per
+ * (type, rank, length), in canonical type order. With the default `want` (all types) this is the
+ * full move set used when leading.
+ */
+export function enumerateCombos(hand: Card[], level: number, want: TypeWants = ALL_TYPES): Move[] {
   const info = analyze(hand, level);
+  const wildsLen = info.wilds.length;
   const moves: Move[] = [];
   const seen = new Set<string>();
   const push = (combo: Combo) => {
@@ -131,86 +173,160 @@ export function enumerateCombos(hand: Card[], level: number): Move[] {
   };
 
   // Singles — one per distinct card present.
-  for (const id of new Set(hand)) {
-    push(makeCombo("single", singleValue(id, level), [id]));
+  if (want.single) {
+    for (const id of new Set(hand)) {
+      push(makeCombo("single", singleValue(id, level), [id]));
+    }
   }
 
   // Pairs (incl. joker pairs).
-  if (info.small.length >= 2) push(makeCombo("pair", 16, info.small.slice(0, 2)));
-  if (info.big.length >= 2) push(makeCombo("pair", 17, info.big.slice(0, 2)));
-  for (let r = 2; r <= RANK_A; r++) {
-    const cards = assemble([[r, 2]], info);
-    if (cards) push(makeCombo("pair", pointValue(r, level), cards));
+  if (want.pair) {
+    if (info.small.length >= 2) push(makeCombo("pair", 16, info.small.slice(0, 2)));
+    if (info.big.length >= 2) push(makeCombo("pair", 17, info.big.slice(0, 2)));
+    for (let r = 2; r <= RANK_A; r++) {
+      const cards = assemble([[r, 2]], info);
+      if (cards) push(makeCombo("pair", pointValue(r, level), cards));
+    }
   }
 
   // Triples.
-  for (let r = 2; r <= RANK_A; r++) {
-    const cards = assemble([[r, 3]], info);
-    if (cards) push(makeCombo("triple", pointValue(r, level), cards));
+  if (want.triple) {
+    for (let r = 2; r <= RANK_A; r++) {
+      const cards = assemble([[r, 3]], info);
+      if (cards) push(makeCombo("triple", pointValue(r, level), cards));
+    }
   }
 
   // Full houses — one per triple rank (first valid attached pair, wild-minimal).
-  for (let t = 2; t <= RANK_A; t++) {
-    if (!assemble([[t, 3]], info)) continue;
-    for (let q = 2; q <= RANK_A; q++) {
-      if (q === t) continue;
-      const cards = assemble([[t, 3], [q, 2]], info);
-      if (cards) {
-        push(makeCombo("fullHouse", pointValue(t, level), cards));
-        break;
+  if (want.fullHouse) {
+    for (let t = 2; t <= RANK_A; t++) {
+      if (!assemble([[t, 3]], info)) continue;
+      for (let q = 2; q <= RANK_A; q++) {
+        if (q === t) continue;
+        const cards = assemble([[t, 3], [q, 2]], info);
+        if (cards) {
+          push(makeCombo("fullHouse", pointValue(t, level), cards));
+          break;
+        }
       }
     }
   }
 
-  // Straights & straight flushes (length 5).
-  for (const win of STRAIGHT_WINDOWS) {
-    const reqs = win.map((r) => [r, 1] as [number, number]);
-    const cards = assemble(reqs, info);
-    const top = win[win.length - 1] as number;
-    if (cards) push(makeCombo("straight", top, cards));
-    for (let suit = 0; suit < 4; suit++) {
-      const sf = assembleFlush(win, suit, info);
-      if (sf) push(makeCombo("straightFlush", top, sf));
+  // Straights & straight flushes (length 5) — share one window loop; pushed in canonical order
+  // (per window: the straight, then its straight flushes).
+  if (want.straight || want.straightFlush) {
+    for (const win of STRAIGHT_WINDOWS) {
+      const top = win[win.length - 1] as number;
+      if (want.straight) {
+        const cards = assemble(
+          win.map((r) => [r, 1] as [number, number]),
+          info,
+        );
+        if (cards) push(makeCombo("straight", top, cards));
+      }
+      if (want.straightFlush) {
+        for (let suit = 0; suit < 4; suit++) {
+          const sf = assembleFlush(win, suit, info);
+          if (sf) push(makeCombo("straightFlush", top, sf));
+        }
+      }
     }
   }
 
   // Tubes (3 consecutive pairs) and plates (2 consecutive triples).
-  for (const win of TUBE_WINDOWS) {
-    const cards = assemble(win.map((r) => [r, 2] as [number, number]), info);
-    if (cards) push(makeCombo("tube", win[win.length - 1] as number, cards));
-  }
-  for (const win of PLATE_WINDOWS) {
-    const cards = assemble(win.map((r) => [r, 3] as [number, number]), info);
-    if (cards) push(makeCombo("plate", win[win.length - 1] as number, cards));
-  }
-
-  // Numeric bombs (4..10 of a kind) and the joker bomb.
-  for (let n = 4; n <= 10; n++) {
-    for (let r = 2; r <= RANK_A; r++) {
-      const cards = assemble([[r, n]], info);
-      if (cards) push(makeCombo("bomb", pointValue(r, level), cards));
+  if (want.tube) {
+    for (const win of TUBE_WINDOWS) {
+      const cards = assemble(
+        win.map((r) => [r, 2] as [number, number]),
+        info,
+      );
+      if (cards) push(makeCombo("tube", win[win.length - 1] as number, cards));
     }
   }
-  if (info.small.length >= 2 && info.big.length >= 2) {
-    push(makeCombo("jokerBomb", 100, [...info.small.slice(0, 2), ...info.big.slice(0, 2)]));
+  if (want.plate) {
+    for (const win of PLATE_WINDOWS) {
+      const cards = assemble(
+        win.map((r) => [r, 3] as [number, number]),
+        info,
+      );
+      if (cards) push(makeCombo("plate", win[win.length - 1] as number, cards));
+    }
+  }
+
+  // Numeric bombs (4..10 of a kind). Skip ranks that can't reach size n (naturals + wilds < n)
+  // instead of blindly attempting every (n, rank). Order (n outer, rank inner) is preserved.
+  if (want.bomb) {
+    for (let n = 4; n <= 10; n++) {
+      for (let r = 2; r <= RANK_A; r++) {
+        const natCount = info.cardsByRank.get(r)?.length ?? 0;
+        if (natCount + wildsLen < n) continue;
+        const cards = assemble([[r, n]], info);
+        if (cards) push(makeCombo("bomb", pointValue(r, level), cards));
+      }
+    }
+  }
+  if (want.jokerBomb) {
+    if (info.small.length >= 2 && info.big.length >= 2) {
+      push(makeCombo("jokerBomb", 100, [...info.small.slice(0, 2), ...info.big.slice(0, 2)]));
+    }
   }
 
   return moves;
 }
 
 /**
+ * The set of types worth enumerating to BEAT a top of `topType`: the top's own type if it's a
+ * non-bomb (a higher same-type play beats it), plus the bomb types (which beat any non-bomb, and
+ * among themselves are sorted out by `beats`). Precomputed per type so following allocates nothing.
+ */
+const WANTS_FOR: Record<ComboType, TypeWants> = (() => {
+  const types: ComboType[] = [
+    "single",
+    "pair",
+    "triple",
+    "fullHouse",
+    "straight",
+    "tube",
+    "plate",
+    "bomb",
+    "straightFlush",
+    "jokerBomb",
+  ];
+  const out = {} as Record<ComboType, TypeWants>;
+  for (const t of types) {
+    const w: TypeWants = {
+      single: false,
+      pair: false,
+      triple: false,
+      fullHouse: false,
+      straight: false,
+      straightFlush: true, // bomb tier — can beat any non-bomb
+      tube: false,
+      plate: false,
+      bomb: true, // bomb tier
+      jokerBomb: true, // bomb tier
+    };
+    if (!isBomb(t)) w[t] = true; // a higher play of the top's own (non-bomb) type
+    out[t] = w;
+  }
+  return out;
+})();
+
+/**
  * The legal moves for `player` (normally `state.toAct`). When leading, every combo in hand and
- * NO pass. When following, `pass` plus every combo that beats the current trick.
+ * NO pass. When following, `pass` plus every combo that beats the current trick. The following
+ * case enumerates only the types that can beat the top (the rest can't, so they'd be filtered out)
+ * — an output-identical speedup.
  */
 export function legalMoves(state: GameState, player: Player): Move[] {
   if (state.phase !== "playing") return [];
   const hand = state.hands[player] ?? [];
-  const all = enumerateCombos(hand, state.level);
-  if (!state.trick) return all; // leading: must play, cannot pass
+  if (!state.trick) return enumerateCombos(hand, state.level); // leading: must play, cannot pass
 
   const top = state.trick.topCombo;
+  const candidates = enumerateCombos(hand, state.level, WANTS_FOR[top.type]);
   const out: Move[] = [{ kind: "pass" }];
-  for (const m of all) {
+  for (const m of candidates) {
     if (m.kind === "play" && beats(m.combo, top)) out.push(m);
   }
   return out;

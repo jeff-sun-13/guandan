@@ -42,22 +42,22 @@ to `packages/engine`:
 With these, a bot can: `determinize(obs, rng)` → a real `GameState` → drive `legalMoves`/`applyMove`
 for search/rollouts.
 
-## 3. Performance budget (measured — `pnpm bench`, 2026-06-25, Node single-thread)
+## 3. Performance budget (measured — `pnpm bench`, Node single-thread)
+**After the `legalMoves` routing optimization (2026-06-26); baseline 2026-06-25 in italics.**
 | Metric | Value |
 |---|---|
-| Full random playout (createDeal → terminal) | **~1.58 ms/deal**, ~143 moves/deal → **635 deals/s** |
-| `legalMoves`, fresh 27-card hand (worst case) | **21.5 µs/call** ← the hot path (shrinks as hands deplete) |
-| `applyMove` (incl. clone) | 0.68 µs · `cloneState` 0.09 µs |
-| Rollouts per move budget | ~32 (50ms) · ~63 (100ms) · **~127 (200ms)** · ~316 (500ms) |
+| Full random playout (createDeal → terminal) | **~0.61 ms/deal** → **~1635 deals/s** _(was 1.58 ms / 635)_ |
+| `legalMoves`, fresh 27-card hand (leading) | **~15 µs/call** _(was 21.5)_; far cheaper following |
+| `applyMove` (incl. clone) | ~0.5 µs · `cloneState` ~0.06 µs |
+| Rollouts per move budget | ~80 (50ms) · ~161 (100ms) · **~322 (200ms)** · ~806 (500ms) _(was ~127 @200ms)_ |
 
 **Implications for the design:**
-- A full random rollout costs ~1.58ms ⇒ "every candidate move × K determinizations × full rollout"
-  blows a snappy budget fast (e.g. 20 candidates × 16 dets × 1 rollout ≈ 0.5 s). So: **cap
-  candidate moves** (top-k by the v1 heuristic), **keep K modest** (≈10–20), and prefer a **cheap
-  leaf** (heuristic static eval, or shallow/heuristic rollout) over full random rollouts.
-- `legalMoves` worst case (21.5µs) dominates rollout cost; **encoding optimization (rank-count /
-  bitsets) is the lever** if/when search gets hungry (`gotchas.md`, `03-engine` open questions).
-  Not blocking v2 — note and move on.
+- A full random rollout now costs ~0.61ms (was ~1.58). "candidate × K determinizations × rollout"
+  is ~2.6× more affordable, but still: **cap candidate moves** (top-k by the v1 heuristic), **keep K
+  modest**, and prefer a **cheap leaf** for very wide search.
+- ✅ **`legalMoves` optimized (2026-06-26):** following enumerates only beating types + bomb
+  short-circuit, **output-identical, ~2.6× full-playout** (`moves.ts`). A further lever remains —
+  typed-array `analyze` (constant-factor). Directly cuts the rollout-leaf champion's cost (ADR-0009).
 - These are Node numbers; expect the same order in-browser (V8). A Web Worker (ADR-0005 revisit)
   becomes worthwhile once a move takes >~100ms.
 
