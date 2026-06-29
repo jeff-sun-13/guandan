@@ -54,6 +54,16 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout",
     bot: makeIsmctsBot({ iterations: 150, rollout: true, sampler: belief }),
   },
+  // Budget-crank variants (the "does thinking harder help?" test, ~0.6s and ~2s/move). Same bot,
+  // just more ISMCTS iterations — isolates the effect of search budget on strength.
+  "ismcts-rollout-big": {
+    name: "ismcts-rollout-big",
+    bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief }),
+  },
+  "ismcts-rollout-huge": {
+    name: "ismcts-rollout-huge",
+    bot: makeIsmctsBot({ iterations: 1800, rollout: true, sampler: belief }),
+  },
 };
 
 // Learned-leaf bots (bot v2.4, ADR-0010) — registered only if a trained net exists. The learned leaf
