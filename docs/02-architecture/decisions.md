@@ -34,9 +34,27 @@ partner already knows the layout, so "play X to tell partner Y" shows no benefit
 signals is tractable inference; *sending* them well likely needs methods **beyond vanilla determinization**
 (explicit conventions + partner modeling, belief-state search, or learned policies — cf. bridge
 conventions / Hanabi). So history threading is **necessary but not sufficient** for signalling.
+**Cost (refined 2026-06-28 — the speed hit is mostly AVOIDABLE, and concentrated in signalling):**
+For **reading** information (counting + tribute-deduction), the tracker conditions the hidden-hand
+sampling at the **ROOT** of search; the **rollout hot loop that dominates cost is untouched** (still
+clones the lean state). Net per-move overhead ≈ a richer belief computed once per move (~+10–30% on the
+sampling step, a small fraction of total) — **negligible for live play, minor for eval. No teardown.**
+For **signalling** (using info INSIDE the search — modeling how the partner's belief updates from our
+play), the cost is real and the method is different (belief-state carried through the tree/rollout) —
+this is where speed AND feasibility bind for a search bot.
+**Prior art / connection to the learned route (ADR-0010):** The RL bots (DanZero family) already encode
+played-card **counting** as state features (`06-prior-art/danzero.md` §3, "played cards of the 3 others
+3×54"); GuanZero adds a teammate-cooperation encoding; guandan.cards does **tribute-as-deduction**
+explicitly. They pay ~nothing for it because a **neural policy gets history for free as input** — they
+don't do determinized search over cloned states. So this whole limitation is **specific to our PIMC/
+ISMCTS architecture**, and signalling — hard/expensive for search — is **nearly free for a learned
+policy** (self-play can even discover conventions, cf. Hanabi). ⇒ the information/signalling axis is the
+**strongest concrete argument for the learned route**; ADR-0011 and ADR-0010 are tightly coupled.
 **Alternatives:** (a) Put the move-log inside `GameState` — rejected: bloats the cloned search state and
 couples rules to belief (ADR-0002/0006). (b) Keep the snapshot-only `Observation` forever — rejected:
-now identified as a **ceiling on strength**, not an acceptable simplification.
+now identified as a **ceiling on strength**, not an acceptable simplification. (c) Solve signalling with
+in-search belief-state tracking (explicit conventions + partner model) — viable but hard/brittle; weigh
+against the learned route, which gets it more naturally.
 **Plan / status:** Deferred (the budget-scaling + engine-throughput levers are the current cheap frontier),
 but **recorded as REQUIRED** — top-tier strength is impossible without at least (1)+(2). Likely sequence:
 thread public history → tribute + cross-trick inference (extend `belief.ts`) → then **signalling as its
