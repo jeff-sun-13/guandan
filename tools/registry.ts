@@ -53,10 +53,9 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout",
     bot: makeIsmctsBot({ iterations: 150, rollout: true, sampler: belief }),
   },
-  // *** CURRENT CHAMPION (bot v2.3b) *** — same bot as ismcts-rollout but 600 iterations. The
-  // budget-crank test (2026-06-28, Hetzner) showed search budget scales the rollout leaf HARD: -big
-  // beats the 150-iter version 31–1 / 32 = 96.9% (CI [84.3,99.4]). ~0.6s/move. The rollout leaf does
-  // NOT plateau like the static-leaf ISMCTS did — strength is compute-elastic. See changelog 2026-06-28.
+  // 600 iters (~0.6s/move). Strong, but the budget-saturation curve (2026-06-29, Hetzner) shows
+  // strength keeps climbing to ~1200 then PLATEAUS: Elo 150→1193, 300→1473, 600→1662, 1200→1842,
+  // 1800→1877; 3600/7200 add nothing. So 600 is past the steep part but below the knee.
   "ismcts-rollout-big": {
     name: "ismcts-rollout-big",
     bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief }),
@@ -84,6 +83,8 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout-300",
     bot: makeIsmctsBot({ iterations: 300, rollout: true, sampler: belief }),
   },
+  // *** SHIP TARGET *** — 1200 iters (~1s/move) is the strength/latency SWEET SPOT: the knee of the
+  // saturation curve, statistically tied with 1800 (Elo 1842 vs 1877) at lower cost (changelog 2026-06-29).
   "ismcts-rollout-1200": {
     name: "ismcts-rollout-1200",
     bot: makeIsmctsBot({ iterations: 1200, rollout: true, sampler: belief }),

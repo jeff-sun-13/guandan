@@ -4,6 +4,28 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-06-29 — Budget-saturation curve: strength PLATEAUS ~1200–1800 iters (revises the "no plateau" claim)
+- Ran overnight + into the day on the Hetzner box: a budget ladder + head-to-head probes mapping
+  `ismcts-rollout` strength vs ISMCTS search iterations. Full curve — **Elo, 6-bot playable-range
+  ladder, n=24 mirrored/pair, `pimc-static` anchor**:
+  | iters | 150 | 300 | 600 | 1200 | 1800 |
+  | Elo   |1193 |1473 |1662 |1842  |1877  |
+  Gains per step: 150→300 **+280**, 300→600 **+189**, 600→1200 **+180**, 1200→1800 **+35** (flattening).
+  Top end (head-to-head): 2400 beats 1200 (33–15, 68.8%), but **3600 vs 1800 = 58.3%** (CI 38.8–75.5,
+  inconclusive) and **7200 vs 3600 = 37.5%** (inconclusive, trends worse). So strength is FLAT past ~1800.
+- **Finding — the knee is ~1200–1800 iterations.** Steep gains to ~1200, diminishing to ~1800, nothing
+  measurable beyond. **This REVISES the 2026-06-28 "compute-elastic, no plateau" claim**, which
+  extrapolated from only the 150→600 jump (deep in the steep region). The rollout leaf DOES saturate;
+  we've now located where. (Earlier 4-bot overnight ladder agreed: huge 1920, big 1741, 150 1296,
+  pimc-static 1044.)
+- **Ship implication:** **~1200 iters is the strength/latency sweet spot** for live play (~1s/move with
+  the fast-path), statistically tied with 1800 (Elo 1842 vs 1877). Champion = `huge` (1800) by a hair;
+  `1200` is effectively co-champion at lower cost. Past ~1800 = wasted compute.
+- **Strategic:** the **search-budget lever is now TAPPED OUT.** Next strength must come from elsewhere —
+  history threading (ADR-0011 Path A: tribute/counting), a better leaf, or the learned route (ADR-0010).
+  Stopped the `day` ladder early once 2400/3600 were confirmed uninformative. Box left idle.
+
+---
 ## 2026-06-28 — NEW CHAMPION: ismcts-rollout-big (600 iters) beats the 150-iter champion ~97%; search budget scales hard
 - **Ran the budget-crank test on the Hetzner box** (178.156.158.230, 8 vCPU) — the campaign's first
   real use of remote compute (ADR-0009). Result is decisive: **`ismcts-rollout-big` (600 ISMCTS
