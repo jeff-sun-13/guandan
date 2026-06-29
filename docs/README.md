@@ -5,6 +5,8 @@ Two layers of docs. Know which kind you're touching.
 ## Reference layer (stable — trust these, change deliberately)
 - `00-overview/vision.md` — what we're building and why; success criteria.
 - `00-overview/roadmap.md` — milestones M0…Mn and what "done" means for each.
+- `00-overview/strategy-decisions.md` — the **forks that need the human** (search-first vs learned
+  bot, compute budget, external benchmark, partner coordination), with evidence + recommendations.
 - `00-overview/glossary.md` — Guandan + project terms so everyone uses the same words.
 - `01-rules/rules.md` — **authoritative** Guandan rules spec. The engine implements THIS.
 - `01-rules/open-questions.md` — rules ambiguities to confirm with the human / guandan.cards.
