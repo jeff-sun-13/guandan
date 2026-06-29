@@ -93,6 +93,22 @@ function validatePlay(state: GameState, player: Player, cards: Card[], comboType
  * move (passing while leading, playing cards you don't have, a play that doesn't beat the trick).
  */
 export function applyMove(state: GameState, move: Move): GameState {
+  return applyMoveImpl(state, move, false);
+}
+
+/**
+ * Like `applyMove`, but ASSUMES the move is legal: it skips the combo re-validation (`classify`)
+ * and the `beats` check. Use ONLY for moves produced by `legalMoves` (e.g. inside bot rollouts),
+ * where legality is guaranteed by construction — there, the checks are pure redundant work and the
+ * `classify()` call is the single biggest rollout cost (~55–60% of the rollout overhead; see
+ * docs/gotchas.md 2026-06-28). Still pure: returns a fresh state, never mutates the input. Behaviour
+ * is otherwise byte-identical to `applyMove` (shared implementation), asserted by an equivalence test.
+ */
+export function applyMoveTrusted(state: GameState, move: Move): GameState {
+  return applyMoveImpl(state, move, true);
+}
+
+function applyMoveImpl(state: GameState, move: Move, trusted: boolean): GameState {
   if (state.phase !== "playing") throw new Error("deal is over");
   const s = cloneState(state);
   const p = s.toAct;
@@ -121,9 +137,11 @@ export function applyMove(state: GameState, move: Move): GameState {
   }
 
   // --- play ---
-  validatePlay(s, p, move.cards, move.combo.type, move.combo.rank, move.combo.length);
-  if (s.trick && !beats(move.combo, s.trick.topCombo)) {
-    throw new Error("play does not beat the current trick");
+  if (!trusted) {
+    validatePlay(s, p, move.cards, move.combo.type, move.combo.rank, move.combo.length);
+    if (s.trick && !beats(move.combo, s.trick.topCombo)) {
+      throw new Error("play does not beat the current trick");
+    }
   }
 
   s.hands[p] = removeCards(s.hands[p] as Card[], move.cards);
@@ -178,14 +196,26 @@ export function outOfPlayCards(hands: Card[][]): Card[] {
   return out;
 }
 
-/** A single player's legal view: their hand, everyone's card counts, and public trick info. */
-export function observe(state: GameState, player: Player): Observation {
+/**
+ * A single player's legal view: their hand, everyone's card counts, and public trick info.
+ *
+ * `opts.includeOutOfPlay = false` skips building the O(108) `outOfPlay` array (leaving it empty).
+ * Use it ONLY when the consumer provably does not read `outOfPlay` — e.g. a rollout driven by a
+ * policy (the v1 `heuristicBot`) that ignores it. It saves ~30–40% of the rollout's per-ply cost
+ * (docs/gotchas.md 2026-06-28). Default (omitted/true) is unchanged: the full, honest observation
+ * that determinization and the UI rely on.
+ */
+export function observe(
+  state: GameState,
+  player: Player,
+  opts?: { includeOutOfPlay?: boolean },
+): Observation {
   return {
     level: state.level,
     player,
     hand: (state.hands[player] as Card[]).slice(),
     handCounts: state.hands.map((h) => h.length),
-    outOfPlay: outOfPlayCards(state.hands),
+    outOfPlay: opts?.includeOutOfPlay === false ? [] : outOfPlayCards(state.hands),
     trick: state.trick ? { ...state.trick } : null,
     toAct: state.toAct,
     finished: state.finished.slice(),

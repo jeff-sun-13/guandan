@@ -27,6 +27,9 @@ future agent (or the human) an hour. Newest at top. Include the date.
      unused `outOfPlay`) can be **additive PURE fast-paths** — still return fresh immutable state, so
      the crown-jewel purity is preserved. **Do NOT build a second mutable in-place engine path**: it
      buys ~0% and is the easiest place to introduce an aliasing/determinism bug next to the pure code.
+     **DONE 2026-06-28:** both shipped as `applyMoveTrusted` + `observe(…, { includeOutOfPlay: false })`,
+     wired into the PIMC/ISMCTS rollout leaves → 1.29× verified (`tools/bench-rollout.ts`), 136 tests
+     green. See changelog 2026-06-28.
   3. The untouched dominant cost is `legalMoves`/`enumerateCombos` (~16 µs fresh hand, the heaviest
      allocator via `analyze`'s Maps). A **rollout-specific cheap move generator** (the rollout policy
      only needs the cheapest few moves, not the full enumerated `Move[]`) is the bigger prize — and

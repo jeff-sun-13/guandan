@@ -68,6 +68,7 @@ export {
 export {
   createDeal,
   applyMove,
+  applyMoveTrusted,
   isTerminal,
   result,
   observe,

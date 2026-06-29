@@ -26,6 +26,28 @@ Append-only, newest at top. One entry per working session. Format:
   details are now in `tools/remote/README.md` (live-box block + ops gotchas). No code changes.
 
 ---
+## 2026-06-28 — Engine throughput: rollout fast-path (trusted apply + lean observe), 1.29× verified
+- Productionized the two low-risk wins the in-place prototype identified (below), as **additive PURE
+  fast-paths** — no mutable second engine, purity directive intact:
+  - `applyMoveTrusted` (engine): same shared impl as `applyMove` but skips the combo re-validation
+    (`classify`) + `beats` check for moves already known legal (everything from `legalMoves`). One
+    implementation gated by a `trusted` flag, so behaviour can't drift.
+  - `observe(state, player, { includeOutOfPlay: false })`: skips building the O(108) `outOfPlay`
+    array. Default (omitted) is unchanged — determinize/UI still get the full honest observation.
+- Wired both into the PIMC + ISMCTS **rollout leaves** (the champion's hot path). Lean observe is
+  gated on `rolloutBot === heuristicBot` (which provably never reads `outOfPlay`), so a custom rollout
+  policy still gets the full observation — safe by construction.
+- **Verified equivalence + speedup.** New engine test (`apply-trusted-equivalence.test.ts`): trusted
+  == checked transition is deep-equal at every ply of 50 random deals, lean observe == full save for
+  `outOfPlay`, and purity (input unmutated). **136 tests green** (was 134), all packages typecheck.
+  Head-to-head bench (`tools/bench-rollout.ts`, identical checksums = identical work): **1,740 →
+  2,252 heuristic rollouts/s = 1.29×.** Directly buys ~29% more ISMCTS iterations per move-budget —
+  and we just proved (above) strength is compute-elastic, so that's free strength for the champion.
+- **Untouched bigger lever (noted):** the tree-descent `applyMove` calls in ISMCTS could also be
+  trusted (moves come from `candidatesAt`→`legalMoves`); and `legalMoves`/`enumerateCombos` itself
+  (a rollout-specific cheap move generator) remains the largest prize. Left for a focused follow-up.
+
+---
 ## 2026-06-28 — Measured: rollout cost is redundant work, not allocation (in-place core only ~1.37×)
 - Prototyped an allocation-free in-place rollout core (`tools/fast-rollout-bench.ts`) to test whether
   per-ply `cloneState` is the rollout bottleneck. **It isn't.** Correctness gate passed (identical

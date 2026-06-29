@@ -19,6 +19,7 @@
 import {
   determinize,
   applyMove,
+  applyMoveTrusted,
   legalMoves,
   observe,
   isTerminal,
@@ -134,14 +135,21 @@ export function makeIsmctsBot(opts: IsmctsOptions = {}): Bot {
   const maxCandidates = opts.maxCandidates ?? 20;
   const rolloutBot = opts.rolloutBot ?? heuristicBot;
   const sample = opts.sampler ?? determinize;
+  const leanRollout = rolloutBot === heuristicBot; // heuristic provably ignores obs.outOfPlay
   const leaf: LeafEvaluator =
     opts.leaf ??
     (opts.rollout
-      ? (s, myTeam, rng) => {
+      ? // Rollout leaf fast-path: trusted apply (moves are legal by construction) + lean observe
+        // (skip the unused outOfPlay array) when the policy is the default heuristic. Pure; see
+        // docs/gotchas.md 2026-06-28. This is the champion's hot path, so it directly buys iterations.
+        (s, myTeam, rng) => {
           let st = s;
           while (!isTerminal(st)) {
             const seat = st.toAct;
-            st = applyMove(st, rolloutBot(observe(st, seat), legalMoves(st, seat), rng));
+            const obs = leanRollout
+              ? observe(st, seat, { includeOutOfPlay: false })
+              : observe(st, seat);
+            st = applyMoveTrusted(st, rolloutBot(obs, legalMoves(st, seat), rng));
           }
           return dealValue(result(st), myTeam);
         }

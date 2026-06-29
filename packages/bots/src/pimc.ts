@@ -19,6 +19,7 @@
 import {
   determinize,
   applyMove,
+  applyMoveTrusted,
   legalMoves,
   observe,
   isTerminal,
@@ -93,13 +94,20 @@ function prefilter(legal: Move[], obs: Observation, max: number): Move[] {
   return [...must, ...plays.slice(0, room)];
 }
 
-/** Play `s` to the end with `rolloutBot` for every seat; return the deal value for `myTeam`. */
+/**
+ * Play `s` to the end with `rolloutBot` for every seat; return the deal value for `myTeam`.
+ * Fast-path: moves come from `legalMoves`, so `applyMoveTrusted` skips redundant re-validation; and
+ * when the policy is the default `heuristicBot` (which never reads `outOfPlay`) we skip building that
+ * O(108) array each ply. Both are pure (fresh state); equivalence is asserted in the engine tests.
+ */
 function rollout(s: GameState, myTeam: number, rolloutBot: Bot, rng: Rng): number {
+  const lean = rolloutBot === heuristicBot; // heuristic provably ignores obs.outOfPlay
   let st = s;
   while (!isTerminal(st)) {
     const seat = st.toAct;
-    const mv = rolloutBot(observe(st, seat), legalMoves(st, seat), rng);
-    st = applyMove(st, mv);
+    const obs = lean ? observe(st, seat, { includeOutOfPlay: false }) : observe(st, seat);
+    const mv = rolloutBot(obs, legalMoves(st, seat), rng);
+    st = applyMoveTrusted(st, mv);
   }
   return dealValue(result(st), myTeam);
 }
