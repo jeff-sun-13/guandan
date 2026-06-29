@@ -46,20 +46,22 @@ export const REGISTRY: Record<string, NamedBot> = {
     bot: makePimcBot({ leaf: staticLeaf, determinizations: 100, maxCandidates: 24, sampler: belief }),
   },
   "ismcts-belief": { name: "ismcts-belief", bot: makeIsmctsBot({ iterations: 600, sampler: belief }) },
-  // *** CURRENT CHAMPION (bot v2.3) *** — ISMCTS + belief + heuristic ROLLOUT leaf. Beats pimc-static
-  // ~82% (59–13/72, CI [71.5,89.1], 2026-06-26): the full "good search + belief + good leaf" combo.
-  // Rollout is ~1000× the static leaf, so iterations stay low (informative per sample) → seconds/move
-  // (too slow for UI, fine for the strength-first campaign). See changelog 2026-06-26.
+  // ISMCTS + belief + heuristic ROLLOUT leaf (bot v2.3). Beat pimc-static ~82% (59–13/72, 2026-06-26).
+  // SUPERSEDED as champion 2026-06-28: at only 150 iters it loses 1–31 to -big below. Kept as the
+  // budget baseline (the "150 iters" rung). Rollout is ~1000× the static leaf → seconds/move.
   "ismcts-rollout": {
     name: "ismcts-rollout",
     bot: makeIsmctsBot({ iterations: 150, rollout: true, sampler: belief }),
   },
-  // Budget-crank variants (the "does thinking harder help?" test, ~0.6s and ~2s/move). Same bot,
-  // just more ISMCTS iterations — isolates the effect of search budget on strength.
+  // *** CURRENT CHAMPION (bot v2.3b) *** — same bot as ismcts-rollout but 600 iterations. The
+  // budget-crank test (2026-06-28, Hetzner) showed search budget scales the rollout leaf HARD: -big
+  // beats the 150-iter version 31–1 / 32 = 96.9% (CI [84.3,99.4]). ~0.6s/move. The rollout leaf does
+  // NOT plateau like the static-leaf ISMCTS did — strength is compute-elastic. See changelog 2026-06-28.
   "ismcts-rollout-big": {
     name: "ismcts-rollout-big",
     bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief }),
   },
+  // 1800 iters (~2s/move) — being ranked against -big to see if strength keeps climbing past 600.
   "ismcts-rollout-huge": {
     name: "ismcts-rollout-huge",
     bot: makeIsmctsBot({ iterations: 1800, rollout: true, sampler: belief }),

@@ -4,6 +4,43 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-06-28 — NEW CHAMPION: ismcts-rollout-big (600 iters) beats the 150-iter champion ~97%; search budget scales hard
+- **Ran the budget-crank test on the Hetzner box** (178.156.158.230, 8 vCPU) — the campaign's first
+  real use of remote compute (ADR-0009). Result is decisive: **`ismcts-rollout-big` (600 ISMCTS
+  iterations) beats the reigning champion `ismcts-rollout` (150 iters) 31–1 / 32 = 96.9%**, 95% Wilson
+  CI **[84.3%, 99.4%]** (mirrored, seeds 1–16). **`ismcts-rollout-big` is the new strongest bot.**
+  `ismcts-rollout-huge` (1800 iters) vs the 150-champion is running now (will rank big-vs-huge).
+- **The headline lesson — search budget scales the rollout leaf HARD (overturns a prior gotcha).** The
+  2026-06-26 ISMCTS note warned "decisions are largely stable past a few hundred iterations, so raising
+  the iteration count alone won't close the gap." That was measured on the **static-leaf** ISMCTS and
+  does **NOT** generalize: with the **rollout leaf**, 150→600 iters is a ~97% blowout. Intuition: a
+  faithful (rollout) leaf gives each extra iteration real signal to integrate, so the tree keeps
+  sharpening; a crude static leaf saturates. **Strength is strongly compute-elastic for the champion.**
+- **Strategic consequence:** this re-prioritizes the campaign. (1) The champion was badly
+  under-budgeted — cranking iterations is the cheapest strength lever we have right now, gated only by
+  move-time. (2) That makes **rollout throughput more valuable, not less** — every speedup buys more
+  affordable iterations → more strength. So engine fast-paths + a learned leaf both pay double. See the
+  in-place-rollout finding below.
+- **Process:** ran headless in tmux on the box, logged to `~/eval.log`, polled by a detached watcher
+  (survives a dev-machine crash). `-big` took ~19 min for 32 games on 8 cores. Playbook + the box
+  details are now in `tools/remote/README.md` (live-box block + ops gotchas). No code changes.
+
+---
+## 2026-06-28 — Measured: rollout cost is redundant work, not allocation (in-place core only ~1.37×)
+- Prototyped an allocation-free in-place rollout core (`tools/fast-rollout-bench.ts`) to test whether
+  per-ply `cloneState` is the rollout bottleneck. **It isn't.** Correctness gate passed (identical
+  finish order + dealValue vs the pure rollout over 5,000 deals), then throughput (30k heuristic
+  rollouts): pure ~1,830 deals/s → in-place ~2,540 deals/s, **only ~1.37×**. Decomposition: skipping
+  `applyMove`'s `validatePlay`/`classify()` re-validation ≈ 55–60% of the gain, skipping the unused
+  `outOfPlay` array in `observe` ≈ 30–40%, true in-place mutation (no clones) ≈ **0%** (V8 GC makes
+  short-lived clones ~free). Full writeup + the "don't build a second mutable engine path" guidance in
+  `docs/gotchas.md`. **Actionable, low-risk, purity-preserving wins:** a "trusted apply" (skip
+  re-validation for already-legal rollout moves) + a lean state-step (skip `outOfPlay`), both still
+  returning fresh immutable state. The bigger untouched prize is `legalMoves`/`enumerateCombos` (a
+  rollout-specific cheap move generator). Now higher-value given strength is compute-elastic (above).
+  Nothing committed; prototype left for review.
+
+---
 ## 2026-06-26 — Engine throughput: legalMoves type-routing → ~2.6× faster playouts (output-identical)
 - Optimized the engine's hottest function, `legalMoves` (`packages/engine/src/moves.ts`), the #1
   compute lever (the rollout-leaf champion calls it ~143×/deal × ~150 rollouts/move). Two changes,

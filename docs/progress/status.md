@@ -2,9 +2,12 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-06-26_
+_Last updated: 2026-06-28_
 
-## Milestone: **M1 complete (playable web app vs 3 heuristic bots). Prior-art documented. NEW CHAMPION (bot v2.3) = `ismcts-rollout` = ISMCTS + belief-conditioned sampling + heuristic rollout leaf — beats the old champion `pimcStaticBot` ~82% (59–13/72, CI [71.5,89.1]). The v2 thesis (search + belief + good leaf TOGETHER) is validated. Cost: seconds/move (too slow for UI, fine for the strength-first campaign). In a dedicated bot-strength campaign — "maximize strength, long haul, final product only, do NOT wire into the app" (human, 2026-06-26). This session also built the parallel eval harness + Bradley-Terry ladder (`pnpm ladder`). External benchmark scoped (OpenGuanDan + DanZero).**
+## Milestone: **M1 complete (playable web app vs 3 heuristic bots). Prior-art documented. Repo now under git + pushed to GitHub (github.com/jeff-sun-13/guandan) and remote eval compute is LIVE (Hetzner box, ADR-0009). NEW CHAMPION (bot v2.3b) = `ismcts-rollout-big` = the rollout-leaf ISMCTS at 600 iterations — beats the prior champion `ismcts-rollout` (same bot at 150 iters) 31–1/32 = 96.9% (CI [84.3,99.4], 2026-06-28). KEY FINDING: search budget scales the rollout leaf HARD (no plateau — strength is compute-elastic); `ismcts-rollout-huge` (1800) is being ranked vs -big now. Lineage: rollout-leaf ISMCTS beat `pimcStaticBot` ~82% (2026-06-26); the v2 thesis (search + belief + good leaf TOGETHER) is validated. Cost: ~0.6–2 s/move (fine for the strength-first campaign + for actual human play). Campaign: "maximize strength, long haul, final product only, do NOT wire into the app" (human, 2026-06-26). Instruments: parallel eval (`pnpm eval`) + Bradley-Terry ladder (`pnpm ladder`). External benchmark scoped (OpenGuanDan + DanZero), still needs the human's machine.**
+
+## ⚠️ Live remote box (2026-06-28) — Hetzner Cloud `178.156.158.230`, 8 vCPU, root ssh, repo at `~/guandan`
+Heavy evals run here, headless in tmux (survives ssh/dev-machine crashes). **It bills while alive — delete it in the Hetzner console when idle.** Full ops playbook + gotchas in `tools/remote/README.md`. As of this update, `ismcts-rollout-huge` vs `ismcts-rollout` is still running on it.
 
 ## Bot-strength campaign (active — the north star, human-directed 2026-06-26)
 Direction: keep maximizing bot strength as a long research effort; integrate into the product once,

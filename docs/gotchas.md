@@ -4,6 +4,35 @@ Surprises, footguns, and hard-won lessons. Append liberally — a 30-second note
 future agent (or the human) an hour. Newest at top. Include the date.
 
 ---
+## 2026-06-28 — Rollout cost is REDUNDANT WORK, not allocation (measured — overturns the CLAUDE.md "no allocations" premise)
+- Prototyped an allocation-free, fully in-place rollout core (`tools/fast-rollout-bench.ts`, kept for
+  reference) to test the long-assumed hypothesis that per-ply `cloneState` allocation is what makes
+  rollouts slow. **It is NOT.** Correctness gate passed (in-place core gives byte-identical finish
+  order + dealValue as the pure rollout over 5,000 random deals — exact, since `heuristicBot` is
+  deterministic and never reads the rng), then throughput, 30k full heuristic rollouts each:
+  - Pure rollout (current shape): ~1,830 deals/s
+  - In-place (no clones, mutate hands/trick in place): ~2,540 deals/s → **only ~1.37×**
+- **Where the 1.37× actually comes from (decomposed with intermediate variants):**
+  - dropping `validatePlay`/`classify()` re-validation in `applyMove` (rollout moves come straight
+    from `legalMoves`, already legal by construction): **~55–60%** of the gain.
+  - dropping the O(108) `outOfPlay` array `observe` builds every ply (the heuristic never reads it):
+    **~30–40%**.
+  - true in-place mutation / skipping `cloneState`: **~0%** (noise). V8's generational GC handles
+    short-lived per-ply clones essentially for free (`cloneState` ≈ 0.06 µs/call in `pnpm bench`).
+- **Lessons for future agents:**
+  1. The "no allocations in hot paths" guidance in `CLAUDE.md` is **misleading for this engine** —
+     the real rollout cost is REDUNDANT COMPUTATION (re-validation + building views the caller
+     ignores), not GC. Measure before optimizing for allocation.
+  2. The two wins (a "trusted apply" that skips re-validation; an `observe`/state-step that skips the
+     unused `outOfPlay`) can be **additive PURE fast-paths** — still return fresh immutable state, so
+     the crown-jewel purity is preserved. **Do NOT build a second mutable in-place engine path**: it
+     buys ~0% and is the easiest place to introduce an aliasing/determinism bug next to the pure code.
+  3. The untouched dominant cost is `legalMoves`/`enumerateCombos` (~16 µs fresh hand, the heaviest
+     allocator via `analyze`'s Maps). A **rollout-specific cheap move generator** (the rollout policy
+     only needs the cheapest few moves, not the full enumerated `Move[]`) is the bigger prize — and
+     the learned leaf attacks the same cost from the other side (shorter / no rollouts).
+
+---
 ## 2026-06-26 — Belief sampling only helps a leaf that SIMULATES opponents (not a shape-only one)
 - Added within-trick belief-conditioned determinization (`belief.ts`) and measured it. It **helped
   ISMCTS** (`ismcts-belief` vs `ismcts-fast` ≈ 56%, n=80) but did **nothing for the static-leaf PIMC

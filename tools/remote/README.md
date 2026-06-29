@@ -4,6 +4,48 @@ Heavy strength evals pin every core and the current champion is seconds/move, so
 should run them on a **cloud CPU box**, not the dev machine (ADR-0009). The harness is headless
 Node + tsx — it runs anywhere.
 
+## ⚠️ Current live box (EPHEMERAL — verify/update/delete this block when the box changes)
+- **Host:** `178.156.158.230` — Hetzner Cloud, login `root` (key-based ssh), **8 vCPU**.
+- **State (as of 2026-06-28):** repo cloned at `~/guandan` (origin = github.com/jeff-sun-13/guandan,
+  PUBLIC), deps installed, `setup.sh` already run + tests green. Box clock is UTC (dev machine is CDT).
+- **Billing:** it bills while it exists. When the campaign is idle, **delete the server in the Hetzner
+  console** (or `hcloud server delete`) — stopping isn't enough to fully stop charges on some plans.
+- If this IP is dead, the box was deleted/recreated — provision a new one per "Workflow" below and
+  update this block (and `docs/progress/status.md`).
+
+## Ops playbook — drive a headless eval from an agent (no interactive shell)
+Run long jobs in **tmux** so they survive ssh drops / a dev-machine crash, and `tee` to a logfile so
+results are recoverable even if the tmux pane is gone. Pattern that works (write a script, don't fight
+nested quoting over ssh — PowerShell mangles heredocs; use the Bash tool or scp a file):
+```bash
+# 1. write a run script on the box (Bash tool, heredoc piped over ssh):
+ssh root@HOST 'cat > ~/run-eval.sh' <<'EOF'
+#!/usr/bin/env bash
+cd ~/guandan
+t0=$(date +%s); pnpm eval ismcts-rollout-big ismcts-rollout 16; echo "done $(( $(date +%s)-t0 ))s"
+echo RUN_COMPLETE
+EOF
+# 2. launch detached in tmux, logged:
+ssh root@HOST 'tmux new-session -d -s eval "bash ~/run-eval.sh 2>&1 | tee ~/eval.log"'
+# 3. poll for completion without holding the connection open (run_in_background a watcher):
+ssh root@HOST 'until grep -q RUN_COMPLETE ~/eval.log; do sleep 15; done; cat ~/eval.log'
+```
+Check state on reconnect: `ssh root@HOST 'tmux ls; cat /proc/loadavg; cat ~/eval.log'`.
+
+### Gotchas hit driving evals on the box (save yourself the confusion)
+- **`pnpm eval <a> <b> N` → N is MATCHES, not deals**, and mirror is ON by default, so N=16 runs **32
+  games** (16 seeds × 2 seat-swaps). A "match" is several deals to a winner (~6–12), so a single match
+  of two rollout bots is ~2–3 min. Don't read a 1-match `--no-mirror` probe as the per-game cost of a
+  real run — and an n=1 result is meaningless (CI 21–100%).
+- **Parallel tail / straggler:** the runner uses `cores-1` workers; games vary 4→12 deals, so near the
+  end `loadavg` drops to ~1 while ONE worker finishes the longest match. No partial result prints until
+  ALL workers finish and pool (`poolResults`). Don't kill it when load drops — it's almost done.
+- **Keep batches modest for rollout bots** and **pool seed ranges** for significance (changelog
+  2026-06-26): a too-big single run just ties up the box with no checkpointing. 16 mirrored = a first
+  read; pool more `--seed` ranges if the CI straddles 50%.
+- This box is only **8 cores** — fine for first reads, but the eval is embarrassingly parallel, so a
+  32–64 vCPU box cuts wall-time ~4–8× at the same $/core for high-power batches.
+
 ## Workflow
 1. **Get the repo on a git host** (needs git installed + a GitHub/GitLab remote — see task #8).
 2. **Provision a many-core Linux box.** More cores ≈ linearly faster (the eval is embarrassingly
