@@ -61,10 +61,15 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout-big",
     bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief }),
   },
-  // 1800 iters (~2s/move) — being ranked against -big to see if strength keeps climbing past 600.
+  // 1800 iters (~2s/move). Being ranked against -big/-mega to map where budget saturates.
   "ismcts-rollout-huge": {
     name: "ismcts-rollout-huge",
     bot: makeIsmctsBot({ iterations: 1800, rollout: true, sampler: belief }),
+  },
+  // 3600 iters (~3–4s/move) — the frontier probe: does strength keep climbing past 1800, or knee?
+  "ismcts-rollout-mega": {
+    name: "ismcts-rollout-mega",
+    bot: makeIsmctsBot({ iterations: 3600, rollout: true, sampler: belief }),
   },
 };
 
