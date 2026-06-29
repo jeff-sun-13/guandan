@@ -66,10 +66,11 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout-huge",
     bot: makeIsmctsBot({ iterations: 1800, rollout: true, sampler: belief }),
   },
-  // 3000 iters (~2.5s/move) — the frontier probe: does strength keep climbing past 1800, or knee?
+  // 3600 iters (~3s/move) — the frontier probe: a clean 2× of -huge, to see if strength keeps
+  // climbing past 1800 or hits the knee. Continues the budget ladder (150 → 600 → 1800 → 3600).
   "ismcts-rollout-mega": {
     name: "ismcts-rollout-mega",
-    bot: makeIsmctsBot({ iterations: 3000, rollout: true, sampler: belief }),
+    bot: makeIsmctsBot({ iterations: 3600, rollout: true, sampler: belief }),
   },
 };
 
