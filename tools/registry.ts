@@ -72,6 +72,12 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout-mega",
     bot: makeIsmctsBot({ iterations: 3600, rollout: true, sampler: belief }),
   },
+  // 7200 iters (~6s/move) — the next rung past -mega; extends the saturation curve (overnight only,
+  // too slow for live play). Tests whether strength STILL climbs at 4× the -huge budget.
+  "ismcts-rollout-mega2": {
+    name: "ismcts-rollout-mega2",
+    bot: makeIsmctsBot({ iterations: 7200, rollout: true, sampler: belief }),
+  },
 };
 
 // Learned-leaf bots (bot v2.4, ADR-0010) — registered only if a trained net exists. The learned leaf
