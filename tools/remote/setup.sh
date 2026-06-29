@@ -24,7 +24,7 @@ $SUDO apt-get install -y git curl tmux ca-certificates
 
 echo "==> Node 24 (NodeSource)"
 if ! command -v node >/dev/null 2>&1 || [ "$(node -v | cut -dv -f2 | cut -d. -f1)" -lt 20 ]; then
-  curl -fsSL https://deb.nodesource.com/setup_24.x | $SUDO -E bash -
+  curl -fsSL https://deb.nodesource.com/setup_24.x | $SUDO bash -
   $SUDO apt-get install -y nodejs
 fi
 node -v
