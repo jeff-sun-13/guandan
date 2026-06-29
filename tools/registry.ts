@@ -78,6 +78,20 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout-mega2",
     bot: makeIsmctsBot({ iterations: 7200, rollout: true, sampler: belief }),
   },
+  // Intermediate budget points — fill in the strength-vs-budget curve between the milestones above,
+  // so we can locate the knee (where extra thinking stops paying) precisely across the playable range.
+  "ismcts-rollout-300": {
+    name: "ismcts-rollout-300",
+    bot: makeIsmctsBot({ iterations: 300, rollout: true, sampler: belief }),
+  },
+  "ismcts-rollout-1200": {
+    name: "ismcts-rollout-1200",
+    bot: makeIsmctsBot({ iterations: 1200, rollout: true, sampler: belief }),
+  },
+  "ismcts-rollout-2400": {
+    name: "ismcts-rollout-2400",
+    bot: makeIsmctsBot({ iterations: 2400, rollout: true, sampler: belief }),
+  },
 };
 
 // Learned-leaf bots (bot v2.4, ADR-0010) — registered only if a trained net exists. The learned leaf
