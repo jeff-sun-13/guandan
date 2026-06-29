@@ -3,6 +3,50 @@
 Append-only. Newest at top. Each entry: date, decision, why, alternatives, status.
 
 ---
+## ADR-0011 — Public-information layer ("history threading"): deferred but REQUIRED for top-tier strength
+**Date:** 2026-06-28 · **Status:** **Proposed — deferred, but flagged REQUIRED (human steer, 2026-06-28)**
+**Problem (why it's structural, not a feature gap):** The pure engine is **memoryless by design.**
+`GameState` holds only the CURRENT position (the four hands, the current trick, the finished order);
+`applyMove` keeps **no move log**; `observe()` exposes a **snapshot** `Observation` (hand, card counts,
+current trick, `outOfPlay`). So bots **cannot see the public play history** — who played/passed what
+across past tricks — nor the **tribute exchange**. That omission is forced by two principles: engine
+purity (ADR-0002) and search cost (bots clone `GameState` millions of times; a state carrying a
+move-log is far more expensive to clone — the cost that bounds the budget-scaling we measure). Giving
+bots history is therefore an **architecture decision about where the public memory lives**, not a patch.
+**Decision (proposed):** Add a **public-information layer OUTSIDE the pure deal engine** — a belief/history
+**tracker** (in the bots/match layer) that watches every move + the tribute and maintains an accumulated
+record, feeding bots a **richer observation**. The pure `GameState` stays snapshot-only so search cloning
+stays cheap. Exact form TBD (separate tracker vs enriched `Observation`); the hard constraint is that
+history must **not** bloat the cloned search state.
+**Why REQUIRED (human, an expert player, 2026-06-28):** it is the foundational enabler for three things
+that separate decent from expert play — and the human flags the omission as a hard cap on strength:
+  1. **Tribute-as-deduction** — the opening tribute reveals exact cards; e.g. deducing opponents hold no
+     jokers/high cards makes leading singles a winning line.
+  2. **Cross-trick counting/inference** — remembering each seat's plays/passes across the whole deal (the
+     current belief sampler, `belief.ts`, uses only the CURRENT trick).
+  3. **Signalling** — partnership conventions, "the entirety of high-end Guandan strategy" (human):
+     reading partner plays as coded info, and PLAYING to inform partner.
+**Difficulty gradient (honest — they are NOT equally hard):** (1)+(2) are **tractable inference** that
+fits the existing determinization/belief framework (bias hidden-hand sampling with more public signals)
+— high ROI once history is available. (3) **Signalling is much harder:** determinized search (PIMC/
+ISMCTS) structurally **under-values information-conveying moves** — each sampled world assumes the
+partner already knows the layout, so "play X to tell partner Y" shows no benefit in simulation. *Reading*
+signals is tractable inference; *sending* them well likely needs methods **beyond vanilla determinization**
+(explicit conventions + partner modeling, belief-state search, or learned policies — cf. bridge
+conventions / Hanabi). So history threading is **necessary but not sufficient** for signalling.
+**Alternatives:** (a) Put the move-log inside `GameState` — rejected: bloats the cloned search state and
+couples rules to belief (ADR-0002/0006). (b) Keep the snapshot-only `Observation` forever — rejected:
+now identified as a **ceiling on strength**, not an acceptable simplification.
+**Plan / status:** Deferred (the budget-scaling + engine-throughput levers are the current cheap frontier),
+but **recorded as REQUIRED** — top-tier strength is impossible without at least (1)+(2). Likely sequence:
+thread public history → tribute + cross-trick inference (extend `belief.ts`) → then **signalling as its
+own research track / ADR**. Cross-ref `00-overview/strategy-decisions.md` (Decision 4), `gotchas.md`
+(2026-06-26 belief note), `06-prior-art/our-edge.md` (the tribute/coordination edge we critiqued others for).
+**Revisit when:** the budget/throughput levers flatten, OR the learned-policy track starts (a learned
+policy could subsume conventions), OR sooner if a measured strength plateau traces to opponent/partner
+modeling blindness.
+
+---
 ## ADR-0010 — Learned leaf via supervised DISTILLATION first (not RL self-play)
 **Date:** 2026-06-26 · **Status:** **Phase 1 BUILT & EXPLORED (2026-06-27) — inconclusive; Phase 2 deferred**
 **Phase 1 result:** the full pipeline was built in pure TS and works, but a simple net (lossy

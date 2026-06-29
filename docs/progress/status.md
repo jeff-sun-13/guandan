@@ -162,10 +162,14 @@ Campaign next steps (after infra), in rough order:
    capacity. **Phase 2** (richer encoding + bigger net + self-play RL) is the expensive ceiling
    pursuit — DEFERRED pending a human go/no-go (ADR-0010). **Reframe:** the rollout champion's
    seconds/move is fine for actual human play, so this isn't a blocker for the play goal.
-3. **History-threading architecture (future, own ADR)** — unlock belief's BIGGER signals (cross-trick
-   passing, **tribute-as-deduction**, GS2 diversity sampler) by giving bots the public play history,
-   which the pure-Observation design withholds. Decide where it lives (richer Observation vs
-   match-layer/belief tracker). Belief already helps the champion's rollouts; more belief = more edge.
+3. **History-threading / public-information layer (ADR-0011, REQUIRED but deferred — human steer
+   2026-06-28).** The pure snapshot `Observation` withholds the public play history + tribute, which
+   is now identified as a **hard ceiling on strength**, not an acceptable simplification. Enables (in
+   increasing difficulty): **tribute-as-deduction** + **cross-trick counting** (both tractable inference,
+   extend `belief.ts`), then **signalling** (partnership conventions — "the entirety of high-end
+   Guandan"; a deeper research track since determinized search under-values information-conveying plays).
+   A belief/history tracker ABOVE the pure engine (keep `GameState` snapshot-only for cheap cloning).
+   See ADR-0011 + `00-overview/strategy-decisions.md` Decision 4.
 4. **External benchmark bridge (task #3) — the honest yardstick.** OpenGuanDan referee + DanZero
    opponent (plan in task #3 / changelog). FIRST clone OpenGuanDan and check it ships weights, not
    just the engine. Without an off-our-baseline opponent we can't know we're actually strong (the

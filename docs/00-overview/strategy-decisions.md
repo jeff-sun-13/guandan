@@ -64,16 +64,27 @@ opponent we can't tell real strength from baseline-overfit, and we'd be flying b
 **Needs from you:** a session on your machine to stand up OpenGuanDan + a DanZero checkpoint (an agent
 can drive it, but you run the Java/downloads).
 
-## Decision 4 — Partner coordination / conventions (only a player can steer)
-**The fork.** Your goal is a *coordinating bot PAIR* vs a human team. Today the bot models its partner
-as either a greedy heuristic (PIMC) or a cooperative searcher (ISMCTS) — but there are **no conventions
-or signaling** (real Guandan partners have understandings: "I led low to tell you X"). Related untapped
-edge: **tribute-as-deduction** (the opening tribute leaks hand info we don't yet exploit; needs the
-history-threading architecture, a separate ADR).
-**Recommendation.** Lower priority than 1–3, but it's where a *human who plays the game* adds something
-an agent can't infer. When ready, describe the conventions you and your partner would actually find
-natural to play against, and we'll encode + measure them.
-**Needs from you:** (later) a description of the partnership conventions worth modeling.
+## Decision 4 — Information & coordination: history threading → tribute deduction, counting, signalling (REQUIRED, deferred)
+**Not "lower priority" — a hard ceiling on strength (human steer, 2026-06-28).** The engine is
+**memoryless by design**: bots get a *snapshot* (`Observation`), never the public play history or the
+tribute exchange (see ADR-0011 for why this is structural — purity + search-cloning cost). That blocks
+the three things that separate decent from expert Guandan, in increasing difficulty:
+1. **Tribute-as-deduction** *(tractable, high ROI)* — the opening tribute reveals exact cards; deducing
+   opponents hold no jokers/high cards makes leading singles a winning line. Fits our belief framework.
+2. **Cross-trick counting** *(tractable)* — remembering each seat's plays/passes across the whole deal
+   (today's belief sampler uses only the *current* trick).
+3. **Signalling** *(hard — own research track)* — partnership conventions, which the human (an expert
+   player) calls "the entirety of high-end Guandan strategy." Determinized search structurally
+   *under-values* information-conveying plays (it assumes the partner already knows the layout), so
+   *sending* signals well likely needs methods beyond vanilla PIMC/ISMCTS (conventions + partner model,
+   belief-state search, or learned policies). *Reading* partner signals is tractable inference like #1–2.
+**The enabler for all three is history threading** (ADR-0011): a public-information tracker above the
+pure engine. Necessary but not sufficient — #1–2 follow fairly directly; #3 is a deeper problem.
+**Recommendation.** **Tabled but committed — we cannot *not* do this.** Sequence after the cheap
+budget/throughput frontier: thread history → tribute + counting inference → then signalling as its own
+track. The human's play knowledge is essential for #3 (which conventions to model).
+**Needs from you:** (later) the partnership conventions you and your partner actually use / would find
+natural to play against — for the signalling track.
 
 ---
 
@@ -81,7 +92,8 @@ natural to play against, and we'll encode + measure them.
 1. **Decision 3** (external yardstick) — soon; unblocks honest measurement, needs your machine.
 2. **Decision 2** (compute budget) — quick; bounds the rest.
 3. **Decision 1** (search-first vs learned Phase 2) — after 3, so we invest with real feedback.
-4. **Decision 4** (coordination) — when you want to bring play-knowledge in.
+4. **Decision 4** (history threading → tribute/counting/signalling) — **required, not optional**;
+   sequenced after the cheap frontier, but a hard ceiling on strength until done (ADR-0011).
 
 Meanwhile, the agent keeps harvesting the cheap, safe, measured wins (search budget + engine
 throughput) that don't require any of these decisions — see `progress/status.md` for live state.
