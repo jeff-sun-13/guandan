@@ -4,6 +4,29 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-06-30 — Path A (history threading, ADR-0011) built; cross-trick passing = no gain; tribute A/B running
+- **Built the public-information layer** (the first real step past the tapped-out search budget). The
+  memoryless engine stays pure; the match runner (arena) accumulates a `PublicHistory` (every pass with
+  the top faced + the tribute exchange) and threads it into each bot's `Observation.history`. Two
+  belief upgrades in the sampler: (1) **cross-trick passing** (soft importance weight — a strict
+  superset of the old within-trick signal), (2) **tribute-as-deduction** (a HARD ceiling — a giver
+  paid their highest non-wild single, so the tribute-aware determinization forbids dealing them any
+  higher non-wild card, pushing the strong cards onto the other hidden hands). A/B toggle via
+  `makeBeliefSampler({useHistory})`. **42 tests green** incl. the hard-ceiling guarantee.
+- **Result 1 — cross-trick passing does NOT help.** `ismcts-hist` vs `ismcts-nohist` (static leaf, 1200
+  iters) = **47.9%** (CI 38.2–57.8, n=96, inconclusive/slightly below). Note `nohist` still uses
+  *within-trick* passing, so this measures the MARGINAL value of remembering passes across tricks — and
+  it's ~zero. Sensible: the "who can't beat this" signal is mostly in the current trick; stale passes
+  add little. (Echoes the 2026-06-26 finding that belief sampling is only marginally helpful.)
+- **Result 2 — tribute A/B (the real test) RUNNING.** Since cross-trick passing is ~neutral, an A/B of
+  the full history config ≈ isolates TRIBUTE. Testing on the ROLLOUT champion (where the search actually
+  simulates opponents, so belief should matter most): `ismcts-rollout-hist` vs `-nohist`, n=24. Pending.
+- **Read:** the belief-SAMPLING mechanism (importance-weighting determinizations) looks like a weak
+  strength lever on this architecture. If tribute also doesn't move the rollout champion, the
+  information axis via belief sampling is largely tapped — pointing at the learned route (ADR-0010) or
+  a better leaf, where history is exploited natively. Awaiting the tribute number before concluding.
+
+---
 ## 2026-06-29 — Budget-saturation curve: strength PLATEAUS ~1200–1800 iters (revises the "no plateau" claim)
 - Ran overnight + into the day on the Hetzner box: a budget ladder + head-to-head probes mapping
   `ismcts-rollout` strength vs ISMCTS search iterations. Full curve — **Elo, 6-bot playable-range
