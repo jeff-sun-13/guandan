@@ -3,6 +3,42 @@
 Append-only. Newest at top. Each entry: date, decision, why, alternatives, status.
 
 ---
+## ADR-0012 — Commit to the learned route (human go, 2026-06-30): staged — rich leaf first, then self-play RL for the info axis
+**Date:** 2026-06-30 · **Status:** **Accepted** (human committed after 3 neutral hand-coded results)
+**Context:** Search budget plateaued (~1200–1800 iters, 2026-06-29). Hand-coded belief/history was
+neutral-to-harmful (Path A) and a rollout-policy tweak was neutral (run-out v1). The ISMCTS+rollout
+champion is **near its incremental hand-coded ceiling.** Both the strategy and gap analyses
+(`04-bots/strategy-and-gaps.md`) point to a learned net as (a) the strength/speed ceiling-raiser and (b)
+the only viable home for the **information + signalling axis** (a net ingests history for free; self-play
+can discover coordination — which determinized search structurally cannot send). Human committed to the
+learned route (AskUserQuestion, 2026-06-30).
+**Decision — two stages, cheapest-validating first:**
+- **Stage 1 — strong learned LEAF (rich encoding).** Fix Phase 1's encoding bottleneck (the count-based
+  86-feature vector discarded tactical structure → it was only ~`pimc-static` strength, changelog
+  2026-06-27). Add structural features (who-can-beat-what, run-out/bomb structure, control) + a bigger
+  net, distilling the rollout leaf's verdict on **determinized (perfect-info) worlds.** All **pure-TS**
+  (existing `@guandan/nn` + hand-written Adam trainer), local, ~$0. **Gate:** `ismcts-learned`
+  matches/beats the rollout champion at µs leaf cost (faster → more iterations → possibly stronger).
+  **HONEST SCOPE:** the leaf scores PERFECT-INFO worlds, so it does **NOT** address the information axis
+  (it sees all hands). It's a strength/speed win, not the info/signalling ceiling.
+- **Stage 2 — self-play RL learned POLICY (the info-axis ceiling).** A net conditioning on the
+  **Observation** (hidden info + the public history we already thread) with value/policy heads, improved
+  by **self-play** (AlphaZero/DMC-style). This is where the net LEARNS to exploit history + discover
+  signalling — which distilling the current history-WEAK search cannot add. The real ceiling-raiser and
+  the home for per-opponent modeling + coordination. **EXPENSIVE** (sustained compute; scoped smaller
+  than DanZero's 160 CPU × 30 d). **Its own go/no-go after Stage 1** (the big compute decision).
+**Why staged:** Stage 1 is cheap, reuses infra, gives fast feedback + an immediate strength/speed win,
+and validates the net-evaluation infra before the big RL spend. Stage 2 is where the info axis lives but
+is the real investment — and it subsumes the parked history work (ADR-0011).
+**First step:** a RICH state encoding (foundational for BOTH stages), encoding the tactical structure the
+count-based version discarded, guided by `04-bots/strategy-and-gaps.md`.
+**Alternatives:** (a) Jump straight to Stage 2 RL — rejected as premature (validate the cheap leaf first;
+manage compute). (b) Keep hand-coding — rejected (near ceiling). (c) Distill the SEARCH into a policy net
+— cheap and conditions on history, BUT it imitates the current history-weak search so it can't add
+info-axis skill; useful only as a fast policy / Stage-2 warm-start, not a ceiling-raiser alone.
+**Revisit:** after Stage 1's ladder result → go/no-go on Stage 2 RL and its compute.
+
+---
 ## ADR-0011 — Public-information layer ("history threading"): REQUIRED; first attempt failed; MUST REVISIT
 **Date:** 2026-06-28 · **Status:** **REQUIRED but UNSOLVED — first hand-coded attempt (Path A) measured
 neutral-to-HARMFUL (2026-06-30). The requirement STANDS; a future agent MUST return to this.**
