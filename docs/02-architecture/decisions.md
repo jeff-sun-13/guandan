@@ -3,8 +3,33 @@
 Append-only. Newest at top. Each entry: date, decision, why, alternatives, status.
 
 ---
-## ADR-0011 — Public-information layer ("history threading"): deferred but REQUIRED for top-tier strength
-**Date:** 2026-06-28 · **Status:** **Proposed — deferred, but flagged REQUIRED (human steer, 2026-06-28)**
+## ADR-0011 — Public-information layer ("history threading"): REQUIRED; first attempt failed; MUST REVISIT
+**Date:** 2026-06-28 · **Status:** **REQUIRED but UNSOLVED — first hand-coded attempt (Path A) measured
+neutral-to-HARMFUL (2026-06-30). The requirement STANDS; a future agent MUST return to this.**
+
+> ⚠️ **MUST-REVISIT NOTICE (human directive, 2026-06-30).** Per-opponent hand modeling from the play
+> history, tribute-as-deduction, and partnership signalling are **essential** to top-tier Guandan (see
+> `04-bots/strategy-and-gaps.md`). The bot CANNOT be world-class without them. Our **first attempt failed
+> to help and we do NOT fully understand why** — so this is *parked, not abandoned*. **A future agent is
+> REQUIRED to come back to this.** When you do, assume one of two things is true and find out which:
+> **(a) the implementation was wrong**, or **(b) there's a structural reason** rich belief doesn't pay
+> off in our determinized-reweighting search (in which case the fix is a different mechanism — see below).
+>
+> **What was tried (Path A, methodology, so you don't repeat blind):** the engine stayed pure; the match
+> runner (`arena.ts`) threaded a `PublicHistory` (passes + tribute) into `Observation.history`. The belief
+> sampler (`belief.ts`) used it two ways: a SOFT cross-trick passing reweight over 6 uniform
+> determinizations, and a HARD tribute "ceiling" via a constructive constrained deal (`determinizeWithTribute`).
+> **Results:** cross-trick passing vs within-trick = **47.9%** (n=96, neutral); full history (passing +
+> tribute) on the rollout champion = **33.3%** (n=48, significantly WORSE). We hypothesized the constrained
+> deal was distributionally biased and **tested it (`tools/belief-bias-check.ts`) — REFUTED** (it matches an
+> unbiased rejection sampler). **Cause of the harm is still unknown.** Plausible-but-unverified leads for the
+> next agent: the cross-trick reweight may inject noise; selecting 1 of 6 reweighted worlds may collapse the
+> determinization diversity ISMCTS relies on; or the signal needs a CONSTRUCTIVE per-player belief (extend
+> the tribute pattern to per-seat card-exclusion sets) rather than reweighting. History is OFF by default
+> (`makeBeliefSampler({useHistory:false})`) but the code is intact and opt-in for exactly this investigation.
+> **Strong prior: the right long-term home for this is the LEARNED route (ADR-0010)** — a net ingests history
+> for free and self-play can discover signalling, which determinized search structurally cannot send.
+
 **Problem (why it's structural, not a feature gap):** The pure engine is **memoryless by design.**
 `GameState` holds only the CURRENT position (the four hands, the current trick, the finished order);
 `applyMove` keeps **no move log**; `observe()` exposes a **snapshot** `Observation` (hand, card counts,

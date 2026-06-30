@@ -13,8 +13,18 @@ Heavy evals run here, headless in tmux (survives ssh/dev-machine crashes). **It 
 Search budget is **solved** (knee ~1200–1800; ship 1200). Started the **information axis** (history threading, ADR-0011, Path A): built it; the engine stays pure, the arena threads a public play/pass/tribute record into `Observation.history`. **Results so far are sobering and reframed the problem:**
 - **Cross-trick passing memory: ~no gain** (47.9%, n=96). This is a NARROW slice — it does NOT mean history is useless (an earlier draft wrongly implied that; corrected).
 - **The real blind spot (strategy + gap analysis, 2026-06-30):** the bot counts cards at the *set* level (`outOfPlay`) but does **NOT attribute plays to players**, so it has **no per-opponent hand model** — most of what a strong human does. AND the belief-*sampling* mechanism (reweighting 6 uniform worlds) is too weak to represent sharp per-player inference; that's *why* passing scored 0. The one win (tribute ceiling) works because it's **constructive constrained dealing**, not reweighting.
-- **Tribute A/B running** (the one signal we built well, a hard ceiling) — the test of whether the hand-coded belief route has any further payoff on the rollout champion.
-- **Next-step priorities** (from the analyses, strength-per-effort): (1) **leaf/rollout quality, esp. endgame bomb management** — cheap, architecture-free, and "moves the knee right" (re-opens budget); (2) **tribute exact pinning** (pin the tributed card to the receiver + the return card to the giver — exact, near-free); (3) per-player belief ONLY if rebuilt as constructive constrained sampling, gated on a measured win; (4) the **learned policy** (ADR-0010) is the real home for the information + signalling axis (history is free to a net; search structurally can't *send* signals). Full write-up: `docs/04-bots/strategy-and-gaps.md`.
+- **Path A RESULT — history conditioning HURTS the champion** (`rollout-hist` 33.3%, n=48, significant).
+  Investigated, didn't guess: the "greedy sampler is biased" hypothesis was TESTED & REFUTED; cause
+  unknown. **History defaulted OFF to protect the champion. It is PARKED, not abandoned — REQUIRED, MUST
+  REVISIT** (ADR-0011 must-revisit notice; human directive 2026-06-30). The info/signalling axis likely
+  wants the learned route (ADR-0010).
+- **ACTIVE BUILD — leaf/rollout quality, esp. endgame BOMB management** (the cheap, architecture-free win;
+  "moves the knee right" → can re-open the budget lever). Guided by the human's **"run-out" framework**
+  (`docs/04-bots/strategy-and-gaps.md`): value a hand by its run-out potential (bombs-vs-garbage ratio),
+  hold bombs mostly for late tempo but spend early/sacrificially when it wins out or rescues partner, and
+  track the live-bomb census (from `outOfPlay`) to avoid the over-bomb trap. Gate on the ladder.
+- **Other near-free items when convenient:** tribute exact pinning (pin tributed card to receiver + return
+  card to giver) — but only meaningful once history is un-parked.
 - **Human steer (2026-06-30):** maximize self-play strength; external benchmark **deprioritized** (the human will play-test for "drastic mistakes" instead); wiring the (now playable-speed) champion into the web app is on the list for that play-testing.
 
 ## Bot-strength campaign (active — the north star, human-directed 2026-06-26)

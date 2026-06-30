@@ -57,6 +57,43 @@ Two rules shape everything: (a) **you win by your PAIR's joint finishing order**
 
 ---
 
+## The "run-out" framework (human player, 2026-06-30) — the core concept for leaf evaluation
+
+The strongest single framing the human gave, and the spine of the leaf/endgame work:
+
+- **The core question every turn is "can I make a RUN for the win?"** — seize tempo with bombs + high
+  cards, shed everything else, and **go out** before anyone interrupts. A hand wins out when it has
+  **enough bombs (tempo control) and few enough "garbage" cards (loose singles/odd cards that must be
+  shed)**. So **(bombs) vs (garbage/loose cards) is the key ratio** for "runnability."
+- **Bombs are mostly a LATE-game asset — hold them, but not absolutely.** You sometimes bomb **early for
+  tempo**; most of the time you hold for the endgame run. The policy must be contextual, not a fixed
+  threshold (today's heuristic bombs only on `opponent ≤ 4` — too crude).
+- **Track bombs AND *potential* bombs others may have — this information is significant.** Whether your
+  bomb is safe (won't be over-bombed) depends on which bigger bombs can still exist; compute the live
+  bomb/joker census from `outOfPlay`. This is what avoids the **over-bomb trap** (bomb for the lead, get
+  over-bombed, stranded with garbage → 4th).
+- **The tail risk is interruption:** your run gets cut off and you're stuck with garbage. Weighing this
+  risk (how likely is an opponent to interrupt, given the bomb census + their likely holdings) is central.
+- **TEAM play overrides solo runs:** sometimes you **sacrifice-bomb when you're nowhere near winning**, to
+  yank tempo back **for your partner's** run. The leaf objective is already the pair's +3/+2/+1, but the
+  *rollout policy* must actually play this way (bomb to rescue/enable partner, not just self).
+- Open question (human): how predictable is an opponent's singles/pairs/garbage-vs-bombs balance, and how
+  much does modeling it help? (Unknown — measure if/when per-opponent modeling is revisited.)
+
+**How this maps to code:** the static leaf (`static-eval.ts`) should value a hand by its **run-out
+potential** — reward bombs *more* when the hand is otherwise close to running out (low loose-card count),
+penalize garbage, and fold in the live-bomb census (is my tempo safe?) — not a flat `+0.6/bomb`. The
+rollout policy (`heuristic.ts`) should bomb **to start/continue a winning run, to seize the final lead, or
+to rescue partner's run** — and **avoid bombing into a likely over-bomb that strands it**. Gate every
+change on the ladder vs the current champion.
+
+## ⚠️ History threading is REQUIRED — we MUST revisit it (do not read "parked" as "abandoned")
+Per-opponent modeling, tribute-deduction, and signalling are essential to world-class play. Our first
+hand-coded attempt (Path A) was neutral-to-harmful and we don't fully understand why (impl bug vs a
+structural mismatch with determinized-reweighting search). It is **parked, not dropped — a future agent
+MUST come back to it.** Full methodology + the open question + the likely learned-route home are in
+**ADR-0011** (see its MUST-REVISIT notice). Do not let this fall off the roadmap.
+
 ## Part 2 — What our bot uses vs ignores (code-grounded)
 
 **Uses:**
