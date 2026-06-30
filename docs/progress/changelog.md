@@ -21,9 +21,13 @@ Append-only, newest at top. One entry per working session. Format:
 - **Ship implication:** **~1200 iters is the strength/latency sweet spot** for live play (~1s/move with
   the fast-path), statistically tied with 1800 (Elo 1842 vs 1877). Champion = `huge` (1800) by a hair;
   `1200` is effectively co-champion at lower cost. Past ~1800 = wasted compute.
-- **Strategic:** the **search-budget lever is now TAPPED OUT.** Next strength must come from elsewhere —
-  history threading (ADR-0011 Path A: tribute/counting), a better leaf, or the learned route (ADR-0010).
-  Stopped the `day` ladder early once 2400/3600 were confirmed uninformative. Box left idle.
+- **Strategic:** the **search-budget lever is tapped out FOR THE CURRENT APPROACH.** Important nuance
+  (human, 2026-06-29): the knee is a property of today's information + leaf quality, NOT a fundamental
+  ceiling — **richer belief (history threading) or a better leaf make each iteration more informative,
+  which can shift the curve up AND move the knee right**, re-opening budget as a lever later. So the
+  sequence is: improve information/leaf first (history threading, ADR-0011 Path A; or the learned leaf,
+  ADR-0010), THEN re-measure the budget curve. Stopped the `day` ladder early once 2400/3600 were
+  confirmed uninformative.
 
 ---
 ## 2026-06-28 — NEW CHAMPION: ismcts-rollout-big (600 iters) beats the 150-iter champion ~97%; search budget scales hard

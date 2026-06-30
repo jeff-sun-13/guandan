@@ -27,6 +27,8 @@ import {
   type Observation,
   type GameState,
   type Player,
+  type Combo,
+  type PassEvent,
   type Rng,
 } from "@guandan/engine";
 
@@ -38,6 +40,12 @@ export interface BeliefOptions {
   candidates?: number;
   /** Softmax temperature on the implausibility penalty (0 = uniform, higher = stricter). Default 1.5. */
   lambda?: number;
+  /**
+   * Use the full CROSS-TRICK pass history (`obs.history`, ADR-0011) when available. Default true.
+   * Set false to condition only on the CURRENT trick (the pre-history behaviour) — used to A/B the
+   * value of history threading.
+   */
+  useHistory?: boolean;
 }
 
 /**
@@ -61,17 +69,34 @@ export function currentTrickPassers(obs: Observation): Player[] {
 }
 
 /**
- * Does `seat` hold a NON-bomb play that beats the current top? If so, passing was less plausible.
- * Reuses the engine's own legal-move generator against the real trick — `legalMoves` facing a trick
- * returns exactly the follows that beat the top (plus bombs + pass), so a non-bomb play in that list
- * means a cheap follow was available. Only `hands[seat]` and the trick are read.
+ * The pass constraints to score a world against. With the public history threaded (ADR-0011), use
+ * EVERY pass this deal (cross-trick) — far more signal than one trick. Without it (web app, or an
+ * internal simulated observation), fall back to the CURRENT trick only, derived from the snapshot —
+ * so behaviour is unchanged where history isn't available.
  */
-function canFollowNonBomb(world: GameState, seat: Player, obs: Observation): boolean {
+function passConstraints(obs: Observation, useHistory: boolean): PassEvent[] {
+  if (useHistory && obs.history) return obs.history.passes;
+  const trick = obs.trick;
+  if (!trick) return [];
+  return currentTrickPassers(obs).map((seat) => ({
+    seat,
+    top: trick.topCombo,
+    topPlayer: trick.topPlayer,
+  }));
+}
+
+/**
+ * Does `seat` hold a NON-bomb play that beats `top` (held by `topPlayer`) in this world? If so,
+ * passing it was less plausible. Reuses the engine's legal-move generator against a probe trick —
+ * `legalMoves` facing a trick returns exactly the follows that beat the top (plus bombs + pass), so
+ * a non-bomb play in that list means a cheap follow was available. Only `hands[seat]` is read.
+ */
+function canFollowNonBomb(world: GameState, seat: Player, top: Combo, topPlayer: Player): boolean {
   const probe: GameState = {
     level: world.level,
     hands: world.hands,
     toAct: seat,
-    trick: obs.trick,
+    trick: { leader: topPlayer, topCombo: top, topPlayer, passes: 0 },
     finished: world.finished,
     rng: world.rng,
     phase: "playing",
@@ -82,35 +107,38 @@ function canFollowNonBomb(world: GameState, seat: Player, obs: Observation): boo
   return false;
 }
 
-/** Implausibility of a sampled world: # of cross-team passers who could have cheaply followed. */
-function penaltyOf(world: GameState, obs: Observation, passers: Player[], topTeam: number): number {
+/**
+ * Implausibility of a sampled world: # of pass events where the passer was NOT on the top-holder's
+ * team (so not just cooperatively yielding) yet could have cheaply followed in this world.
+ */
+function penaltyOf(world: GameState, constraints: PassEvent[]): number {
   let penalty = 0;
-  for (const p of passers) {
-    if (teamOf(p) === topTeam) continue; // passing to let your own side win is normal — no penalty
-    if (canFollowNonBomb(world, p, obs)) penalty++;
+  for (const ev of constraints) {
+    if (teamOf(ev.seat) === teamOf(ev.topPlayer)) continue; // letting your own side win — normal
+    if (canFollowNonBomb(world, ev.seat, ev.top, ev.topPlayer)) penalty++;
   }
   return penalty;
 }
 
 /**
  * Build a belief-conditioned sampler. Falls back to plain uniform `determinize` when there's nothing
- * to condition on (leading, or no cross-team passers), so it's never worse-informed than uniform.
+ * to condition on (leading, or no informative passes), so it's never worse-informed than uniform.
  */
 export function makeBeliefSampler(opts: BeliefOptions = {}): Sampler {
   const M = Math.max(1, opts.candidates ?? 6);
   const lambda = opts.lambda ?? 1.5;
+  const useHistory = opts.useHistory ?? true;
 
   return (obs: Observation, rng: Rng): GameState => {
-    const passers = currentTrickPassers(obs);
-    if (M === 1 || passers.length === 0 || !obs.trick) return determinize(obs, rng);
-    const topTeam = teamOf(obs.trick.topPlayer);
+    const constraints = passConstraints(obs, useHistory);
+    if (M === 1 || constraints.length === 0) return determinize(obs, rng);
 
     const worlds: GameState[] = [];
     const weights: number[] = [];
     let total = 0;
     for (let i = 0; i < M; i++) {
       const w = determinize(obs, rng);
-      const wt = Math.exp(-lambda * penaltyOf(w, obs, passers, topTeam));
+      const wt = Math.exp(-lambda * penaltyOf(w, constraints));
       worlds.push(w);
       weights.push(wt);
       total += wt;

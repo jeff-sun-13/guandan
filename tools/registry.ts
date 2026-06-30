@@ -89,6 +89,26 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout-1200",
     bot: makeIsmctsBot({ iterations: 1200, rollout: true, sampler: belief }),
   },
+  // --- Path A (ADR-0011): cross-trick history belief, A/B pairs (history ON vs OFF, else identical) ---
+  // Fast static-leaf ISMCTS pair — cheap, high-n first read on whether cross-trick passing inference
+  // helps. Belief is known to help static-leaf ISMCTS (gotchas 2026-06-26), so this isolates HISTORY.
+  "ismcts-hist": {
+    name: "ismcts-hist",
+    bot: makeIsmctsBot({ iterations: 1200, sampler: makeBeliefSampler({ useHistory: true }) }),
+  },
+  "ismcts-nohist": {
+    name: "ismcts-nohist",
+    bot: makeIsmctsBot({ iterations: 1200, sampler: makeBeliefSampler({ useHistory: false }) }),
+  },
+  // Rollout-champion pair — confirms the effect on the actual champion config (slower).
+  "ismcts-rollout-hist": {
+    name: "ismcts-rollout-hist",
+    bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: makeBeliefSampler({ useHistory: true }) }),
+  },
+  "ismcts-rollout-nohist": {
+    name: "ismcts-rollout-nohist",
+    bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: makeBeliefSampler({ useHistory: false }) }),
+  },
   "ismcts-rollout-2400": {
     name: "ismcts-rollout-2400",
     bot: makeIsmctsBot({ iterations: 2400, rollout: true, sampler: belief }),

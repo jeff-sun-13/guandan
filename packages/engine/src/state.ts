@@ -89,4 +89,35 @@ export interface Observation {
   toAct: Player;
   finished: Player[];
   phase: Phase;
+  /**
+   * Optional PUBLIC play history for this deal (ADR-0011). The pure engine is memoryless and
+   * `observe()` leaves this UNDEFINED; the orchestrator ABOVE the engine (the match runner) fills it
+   * so bots can do cross-trick inference + tribute-as-deduction. Bots must treat it as optional.
+   */
+  history?: PublicHistory;
+}
+
+/** One pass event in the public record: `seat` declined to beat `top` (held by `topPlayer`). */
+export interface PassEvent {
+  seat: Player;
+  top: Combo;
+  topPlayer: Player;
+}
+
+/** One tribute payment: `giver` paid `card` (by rule their highest single at the time). */
+export interface TributeEvent {
+  giver: Player;
+  card: Card;
+}
+
+/**
+ * The observable record of one deal — what the memoryless engine does NOT keep. Populated by the
+ * match runner above the engine and attached to `Observation.history`. Enables the belief upgrades
+ * in ADR-0011 (cross-trick passing inference, tribute-as-deduction). Pure serializable data.
+ */
+export interface PublicHistory {
+  /** Every pass so far this deal, with the top the passer faced. */
+  passes: PassEvent[];
+  /** Tribute(s) paid before this deal began. */
+  tribute: TributeEvent[];
 }
