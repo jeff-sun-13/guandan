@@ -22,12 +22,18 @@ import {
   determinize,
   legalMoves,
   isBomb,
+  isWild,
+  singleValue,
+  shuffle,
+  cloneRng,
   teamOf,
   nextFloat,
+  BIG_JOKER,
   type Observation,
   type GameState,
   type Player,
   type Combo,
+  type Card,
   type PassEvent,
   type Rng,
 } from "@guandan/engine";
@@ -121,8 +127,100 @@ function penaltyOf(world: GameState, constraints: PassEvent[]): number {
 }
 
 /**
- * Build a belief-conditioned sampler. Falls back to plain uniform `determinize` when there's nothing
- * to condition on (leading, or no informative passes), so it's never worse-informed than uniform.
+ * Tribute-aware determinization (ADR-0011, Path A): like the engine's uniform `determinize`, but it
+ * enforces the HARD deduction that a tribute giver paid their highest NON-WILD single, so they cannot
+ * hold any non-wild card ranked ABOVE the card they gave (their "ceiling"). Uniform determinize is
+ * blind to this and would wrongly deal a giver high cards (even jokers); forbidding that pushes the
+ * strong cards onto the OTHER hidden hands — so the bot correctly believes the giver is weak at the
+ * top (e.g. "they tributed below a joker ⇒ they hold no joker ⇒ my singles are safe"). Deals the
+ * highest cards first (most constrained) weighted by remaining need; falls back to uniform
+ * `determinize` if there's no tribute info or no feasible constrained deal is found.
+ */
+function determinizeWithTribute(obs: Observation, rng: Rng): GameState {
+  const tribute = obs.history?.tribute;
+  if (!tribute || tribute.length === 0) return determinize(obs, rng);
+  const me = obs.player;
+  const level = obs.level;
+
+  // Per-seat ceiling on non-wild singleValue (givers only; `me` keeps its exact hand, never sampled).
+  const ceiling = [Infinity, Infinity, Infinity, Infinity];
+  for (const t of tribute) {
+    if (t.giver === me) continue;
+    ceiling[t.giver] = Math.min(ceiling[t.giver] as number, singleValue(t.card, level));
+  }
+  if (ceiling.every((c) => c === Infinity)) return determinize(obs, rng); // only `me` paid — no constraint
+
+  // Live-card pool — mirror of engine `determinize`: full deck (2 of each id) − my hand − out of play.
+  const counts = new Array<number>(BIG_JOKER + 1).fill(2);
+  for (const c of obs.hand) (counts[c] as number)--;
+  for (const c of obs.outOfPlay) (counts[c] as number)--;
+  const pool: Card[] = [];
+  for (let id = 0; id <= BIG_JOKER; id++) {
+    const n = counts[id] as number;
+    if (n < 0) return determinize(obs, rng); // corrupt obs — let the engine path throw consistently
+    for (let k = 0; k < n; k++) pool.push(id);
+  }
+
+  const need: number[] = [0, 0, 0, 0];
+  for (let p = 0; p < 4; p++) if (p !== me) need[p] = obs.handCounts[p] as number;
+
+  // Highest non-wild cards first (most constrained), randomized within equal values.
+  shuffle(rng, pool);
+  const key = (c: Card) => (isWild(c, level) ? -1 : singleValue(c, level));
+  pool.sort((a, b) => key(b) - key(a));
+
+  const hands: Card[][] = [[], [], [], []];
+  hands[me] = obs.hand.slice();
+  for (const c of pool) {
+    const wild = isWild(c, level);
+    const cv = singleValue(c, level);
+    // eligible hidden seats: still need cards, and can hold c (wild is exempt from the ceiling).
+    let total = 0;
+    for (let p = 0; p < 4; p++) {
+      if (p === me || need[p] === 0) continue;
+      if (!wild && cv > (ceiling[p] as number)) continue;
+      total += need[p] as number;
+    }
+    if (total === 0) return determinize(obs, rng); // no feasible placement — fall back to uniform
+    let r = Math.floor(nextFloat(rng) * total);
+    let chosen = -1;
+    for (let p = 0; p < 4; p++) {
+      if (p === me || need[p] === 0) continue;
+      if (!wild && cv > (ceiling[p] as number)) continue;
+      r -= need[p] as number;
+      if (r < 0) {
+        chosen = p;
+        break;
+      }
+    }
+    (hands[chosen] as Card[]).push(c);
+    need[chosen] = (need[chosen] as number) - 1;
+  }
+
+  return {
+    level: obs.level,
+    hands,
+    toAct: obs.toAct,
+    trick: obs.trick ? { ...obs.trick } : null,
+    finished: obs.finished.slice(),
+    rng: cloneRng(rng),
+    phase: obs.phase,
+  };
+}
+
+/** Base world sampler: tribute-constrained when tribute info is present, else plain uniform. */
+function baseDeterminize(obs: Observation, rng: Rng, useHistory: boolean): GameState {
+  if (useHistory && obs.history && obs.history.tribute.length > 0) {
+    return determinizeWithTribute(obs, rng);
+  }
+  return determinize(obs, rng);
+}
+
+/**
+ * Build a belief-conditioned sampler. Two layers of inference (ADR-0011): a HARD tribute ceiling baked
+ * into the base determinization, then SOFT importance-weighting by cross-trick passing plausibility.
+ * Falls back to plain uniform `determinize` when there's nothing to condition on, so it's never
+ * worse-informed than uniform.
  */
 export function makeBeliefSampler(opts: BeliefOptions = {}): Sampler {
   const M = Math.max(1, opts.candidates ?? 6);
@@ -131,13 +229,14 @@ export function makeBeliefSampler(opts: BeliefOptions = {}): Sampler {
 
   return (obs: Observation, rng: Rng): GameState => {
     const constraints = passConstraints(obs, useHistory);
-    if (M === 1 || constraints.length === 0) return determinize(obs, rng);
+    // No passing signal → still apply the hard tribute ceiling (if any) via the base sampler.
+    if (M === 1 || constraints.length === 0) return baseDeterminize(obs, rng, useHistory);
 
     const worlds: GameState[] = [];
     const weights: number[] = [];
     let total = 0;
     for (let i = 0; i < M; i++) {
-      const w = determinize(obs, rng);
+      const w = baseDeterminize(obs, rng, useHistory);
       const wt = Math.exp(-lambda * penaltyOf(w, constraints));
       worlds.push(w);
       weights.push(wt);

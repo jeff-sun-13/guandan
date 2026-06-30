@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { makeRng, type Observation } from "@guandan/engine";
+import { makeRng, singleValue, isWild, type Observation } from "@guandan/engine";
 import { playMatch, randomBot, makeBeliefSampler, type Bot } from "../src/index";
 
 // Path A / ADR-0011: the match runner (arena) threads a public play history into every bot
@@ -43,5 +43,30 @@ describe("public history threading (ADR-0011)", () => {
     };
     playMatch([spy, randomBot, randomBot, randomBot], makeRng(8));
     expect(checked).toBeGreaterThan(0);
+  });
+
+  it("tribute-aware sampling never deals a giver a non-wild card above their ceiling", () => {
+    // Hard deduction (ADR-0011 Path A): a tribute giver paid their highest non-wild single, so a
+    // sampled world must never put a higher non-wild card in their hand. Checked on real game obs
+    // (where a feasible constrained deal always exists, since the actual deal is one).
+    let checkedWorlds = 0;
+    const sampler = makeBeliefSampler();
+    const spy: Bot = (obs, legal, rng) => {
+      if (obs.history && obs.history.tribute.length > 0) {
+        for (let trial = 0; trial < 8; trial++) {
+          const w = sampler(obs, makeRng(1000 + trial));
+          for (const t of obs.history.tribute) {
+            const ceil = singleValue(t.card, obs.level);
+            for (const c of w.hands[t.giver]!) {
+              if (!isWild(c, obs.level)) expect(singleValue(c, obs.level)).toBeLessThanOrEqual(ceil);
+            }
+          }
+        }
+        checkedWorlds++;
+      }
+      return randomBot(obs, legal, rng);
+    };
+    playMatch([spy, randomBot, randomBot, randomBot], makeRng(8));
+    expect(checkedWorlds).toBeGreaterThan(0);
   });
 });
