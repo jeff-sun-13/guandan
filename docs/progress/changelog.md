@@ -27,9 +27,25 @@ Append-only, newest at top. One entry per working session. Format:
   axis is **largely UNTESTED, not tapped.** Also: a 6-sample importance reweighting is itself a weak
   vehicle for rich inference. A pure-Guandan-strategy re-think + a code gap-analysis are in progress
   before drawing conclusions or pivoting to the learned route.
-- **Tribute A/B RUNNING** (the one signal we DID build well — a hard ceiling). Since cross-trick passing
-  is ~neutral, the full-history A/B ≈ isolates TRIBUTE. On the ROLLOUT champion (belief matters most
-  there): `ismcts-rollout-hist` vs `-nohist`, n=24. Pending — report it, don't over-generalize from it.
+- **Tribute A/B RESULT — history HURTS the rollout champion.** `ismcts-rollout-hist` (cross-trick
+  passing + tribute ceiling) vs `-nohist` (within-trick passing) = **33.3%** (16–32, CI 21.7–47.5,
+  n=48) — significantly WORSE. So the full history-conditioned belief, as implemented, is not just
+  neutral but **harmful** on the champion.
+- **Investigated, did NOT guess.** Hypothesis: the greedy tribute-aware deal (`determinizeWithTribute`)
+  is distributionally biased. **TESTED & REFUTED** (`tools/belief-bias-check.ts`): its per-seat
+  hand-value distribution is ~identical to an unbiased uniform-with-rejection sampler honoring the same
+  ceiling (sd 17/15/17 vs 17/15/16). So the constrained deal is fine; **the cause of the harm is not
+  yet known** (plausible-but-unverified: the cross-trick passing reweight, or the 6-sample selection
+  reducing determinization diversity for ISMCTS — NOT claimed as fact). Not chasing it further given the
+  lever's low priority.
+- **Action: protected the champion** — flipped `makeBeliefSampler` default to `useHistory: false`
+  (within-trick belief, the proven config), so the default bots don't carry the regression. The history
+  code stays opt-in for future diagnosis.
+- **Net read (careful):** the hand-coded belief-SAMPLING route is empirically **neutral-to-harmful** here
+  and mechanistically weak (gap analysis). We've spent the obvious tries. **Pivot to the higher-ROI lever
+  the analyses point at: leaf/rollout quality, esp. endgame bomb management** (cheap, architecture-free,
+  can re-open the budget knee). The information+signalling axis ultimately wants the learned route
+  (ADR-0010). The belief route is parked, not deleted.
 - **Strategy re-think (2 parallel agents) → new `docs/04-bots/strategy-and-gaps.md`.** First-principles
   Guandan strategy (ranked by win-rate impact: pair-coordination > endgame control > bomb economy >
   per-opponent reading > counting > tribute > signalling) + a code-grounded gap audit. Key conclusions:

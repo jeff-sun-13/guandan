@@ -31,7 +31,7 @@ describe("public history threading (ADR-0011)", () => {
 
   it("belief sampler conditioned on history still produces card-consistent worlds", () => {
     let checked = 0;
-    const sampler = makeBeliefSampler();
+    const sampler = makeBeliefSampler({ useHistory: true }); // history OFF by default; opt in here
     const spy: Bot = (obs, legal, rng) => {
       if (obs.history && obs.history.passes.length > 0) {
         const w = sampler(obs, makeRng(99));
@@ -50,7 +50,7 @@ describe("public history threading (ADR-0011)", () => {
     // sampled world must never put a higher non-wild card in their hand. Checked on real game obs
     // (where a feasible constrained deal always exists, since the actual deal is one).
     let checkedWorlds = 0;
-    const sampler = makeBeliefSampler();
+    const sampler = makeBeliefSampler({ useHistory: true }); // opt in: history is OFF by default now
     const spy: Bot = (obs, legal, rng) => {
       if (obs.history && obs.history.tribute.length > 0) {
         for (let trial = 0; trial < 8; trial++) {

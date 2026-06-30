@@ -225,7 +225,10 @@ function baseDeterminize(obs: Observation, rng: Rng, useHistory: boolean): GameS
 export function makeBeliefSampler(opts: BeliefOptions = {}): Sampler {
   const M = Math.max(1, opts.candidates ?? 6);
   const lambda = opts.lambda ?? 1.5;
-  const useHistory = opts.useHistory ?? true;
+  // Default OFF: history conditioning (cross-trick passing + the greedy tribute-aware sampler) measured
+  // ~neutral-to-HARMFUL on the rollout champion (hist 33.3%, n=48, 2026-06-30). Likely a distributional
+  // bias in the greedy constrained deal, not a flaw in tribute-as-deduction. Kept opt-in for diagnosis.
+  const useHistory = opts.useHistory ?? false;
 
   return (obs: Observation, rng: Rng): GameState => {
     const constraints = passConstraints(obs, useHistory);
