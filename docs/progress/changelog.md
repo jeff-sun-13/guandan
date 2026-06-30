@@ -4,6 +4,22 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-06-30 (pm) — Leaf v1 (run-out bomb trigger) = ~neutral; pattern: incremental tweaks aren't moving the champion
+- Built the first slice of the human's run-out framework: a rollout-policy bomb trigger that spends a
+  bomb to seize tempo for a winning RUN when ≤3 plays from out (not just defensively). A/B:
+  `ismcts-rollout-v2` vs `ismcts-rollout-big` (identical 600 budget, differ only in rollout policy) =
+  **48.4%** (CI 36.6–60.4, n=64) — inconclusive, ~tied.
+- **Likely reason it's flat:** v1 bombs-to-run but ignores BOMB SAFETY — it can bomb straight into an
+  over-bomb (the exact trap the human warned about), cancelling the benefit. The census-aware version
+  (bomb-to-run only when no bigger bomb is likely live) is the missing half. `runOutBombPlays:3` is also
+  an unswept guess.
+- **Honest meta-pattern (3 results now):** belief history = neutral/harmful; cross-trick passing =
+  neutral; run-out v1 = neutral. The ISMCTS+rollout champion is **robust to these incremental hand-coded
+  tweaks** — suggesting it's near a local ceiling for this architecture, and the real levers are (a)
+  human-guided direction (play-test to find actual blunders to target, vs blind eval tweaks) and (b) the
+  learned route (the gap analysis's identified ceiling-raiser). Don't keep blindly fiddling thresholds.
+
+---
 ## 2026-06-30 — Path A (history threading, ADR-0011) built; cross-trick passing = no gain; tribute A/B running
 - **Built the public-information layer** (the first real step past the tapped-out search budget). The
   memoryless engine stays pure; the match runner (arena) accumulates a `PublicHistory` (every pass with
