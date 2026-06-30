@@ -12,7 +12,7 @@ import type { Observation, Move, Rng } from "@guandan/engine";
 export type Bot = (obs: Observation, legal: Move[], rng: Rng) => Move;
 
 export { randomBot } from "./random";
-export { heuristicBot } from "./heuristic";
+export { heuristicBot, runoutBot, makeHeuristicBot, type HeuristicOptions } from "./heuristic";
 export { pimcBot, pimcStaticBot, makePimcBot, staticLeaf, type PimcOptions, type LeafEvaluator } from "./pimc";
 export { ismctsBot, makeIsmctsBot, type IsmctsOptions } from "./ismcts";
 export { makeLearnedLeaf } from "./learned-leaf";

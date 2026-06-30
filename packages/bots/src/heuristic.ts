@@ -18,6 +18,7 @@ import {
   teamOf,
 } from "@guandan/engine";
 import type { Bot } from "./index";
+import { playsToEmpty } from "./static-eval";
 
 type PlayMove = Extract<Move, { kind: "play" }>;
 const PASS: Move = { kind: "pass" };
@@ -65,31 +66,52 @@ function pickLead(plays: PlayMove[], obs: Observation): PlayMove {
   return plays.reduce((a, b) => (cost(b) < cost(a) ? b : a));
 }
 
-export const heuristicBot: Bot = (obs: Observation, legal: Move[]): Move => {
-  const plays = legal.filter(isPlay);
-  const handSize = obs.hand.length;
+export interface HeuristicOptions {
+  /**
+   * "Run-out" bomb trigger (human's framework, `docs/04-bots/strategy-and-gaps.md`): when only a bomb
+   * can beat the trick and we're CLOSE TO OUT (`playsToEmpty(hand) <= this`), spend the bomb to seize
+   * tempo and run the rest of the hand out, instead of conserving it. 0 = off (the baseline). Default 0.
+   */
+  runOutBombPlays?: number;
+}
 
-  // 1. Go out if any play empties the hand.
-  const goOut = plays.find((m) => m.cards.length === handSize);
-  if (goOut) return goOut;
+/** Build a v1 heuristic bot. `heuristicBot` is the baseline (run-out trigger off). */
+export function makeHeuristicBot(opts: HeuristicOptions = {}): Bot {
+  const runK = opts.runOutBombPlays ?? 0;
+  return (obs: Observation, legal: Move[]): Move => {
+    const plays = legal.filter(isPlay);
+    const handSize = obs.hand.length;
 
-  // 2. Leading: must play. Shed cheaply; avoid leading bombs.
-  if (!obs.trick) {
-    const nonBombs = plays.filter(notBomb);
-    return pickLead(nonBombs.length > 0 ? nonBombs : plays, obs);
-  }
+    // 1. Go out if any play empties the hand.
+    const goOut = plays.find((m) => m.cards.length === handSize);
+    if (goOut) return goOut;
 
-  // 3. Following: legal plays already beat the trick.
-  if (plays.length === 0) return PASS;
+    // 2. Leading: must play. Shed cheaply; avoid leading bombs.
+    if (!obs.trick) {
+      const nonBombs = plays.filter(notBomb);
+      return pickLead(nonBombs.length > 0 ? nonBombs : plays, obs);
+    }
 
-  // Cooperate: if a partner is already winning the trick, let them have it.
-  if (obs.trick.topPlayer === partnerOf(obs.player)) return PASS;
+    // 3. Following: legal plays already beat the trick.
+    if (plays.length === 0) return PASS;
 
-  // Beat an opponent with the cheapest non-bomb if we have one.
-  const nonBombBeats = plays.filter(notBomb);
-  if (nonBombBeats.length > 0) return cheapest(nonBombBeats);
+    // Cooperate: if a partner is already winning the trick, let them have it.
+    if (obs.trick.topPlayer === partnerOf(obs.player)) return PASS;
 
-  // Only bombs can beat it: spend one only if an opponent is dangerously low; else conserve.
-  if (opponentMinCount(obs) <= 4) return cheapest(plays);
-  return PASS;
-};
+    // Beat an opponent with the cheapest non-bomb if we have one.
+    const nonBombBeats = plays.filter(notBomb);
+    if (nonBombBeats.length > 0) return cheapest(nonBombBeats);
+
+    // Only bombs can beat it. Spend one to DEFEND (an opponent is dangerously low), or to seize tempo
+    // for a RUN when we're close to out (run-out framework); otherwise CONSERVE the bomb for late game.
+    if (opponentMinCount(obs) <= 4) return cheapest(plays);
+    if (runK > 0 && playsToEmpty(obs.hand, obs.level) <= runK) return cheapest(plays);
+    return PASS;
+  };
+}
+
+/** v1 heuristic — the baseline rollout policy (bombs only defensively). */
+export const heuristicBot: Bot = makeHeuristicBot();
+
+/** v1 heuristic + the run-out bomb trigger: also bombs to start a winning run when ≤3 plays from out. */
+export const runoutBot: Bot = makeHeuristicBot({ runOutBombPlays: 3 });

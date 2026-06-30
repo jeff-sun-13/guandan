@@ -35,7 +35,7 @@ import {
   type Rng,
 } from "@guandan/engine";
 import type { Bot } from "./index";
-import { heuristicBot } from "./heuristic";
+import { heuristicBot, runoutBot } from "./heuristic";
 import { staticDealValue } from "./static-eval";
 import type { LeafEvaluator } from "./pimc";
 import type { Sampler } from "./belief";
@@ -135,7 +135,7 @@ export function makeIsmctsBot(opts: IsmctsOptions = {}): Bot {
   const maxCandidates = opts.maxCandidates ?? 20;
   const rolloutBot = opts.rolloutBot ?? heuristicBot;
   const sample = opts.sampler ?? determinize;
-  const leanRollout = rolloutBot === heuristicBot; // heuristic provably ignores obs.outOfPlay
+  const leanRollout = rolloutBot === heuristicBot || rolloutBot === runoutBot; // both ignore obs.outOfPlay
   const leaf: LeafEvaluator =
     opts.leaf ??
     (opts.rollout

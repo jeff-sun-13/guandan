@@ -11,6 +11,7 @@ import { dirname, join } from "node:path";
 import {
   randomBot,
   heuristicBot,
+  runoutBot,
   makePimcBot,
   pimcStaticBot,
   staticLeaf,
@@ -59,6 +60,13 @@ export const REGISTRY: Record<string, NamedBot> = {
   "ismcts-rollout-big": {
     name: "ismcts-rollout-big",
     bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief }),
+  },
+  // Leaf/endgame A/B (run-out framework, 2026-06-30): IDENTICAL to -big (600 iters, same belief) except
+  // the rollout policy bombs to start a winning RUN when ≤3 plays from out, not just defensively.
+  // Isolates whether better in-rollout bomb timing lifts the champion. A/B: -v2 vs -big.
+  "ismcts-rollout-v2": {
+    name: "ismcts-rollout-v2",
+    bot: makeIsmctsBot({ iterations: 600, rollout: true, rolloutBot: runoutBot, sampler: belief }),
   },
   // 1800 iters (~2s/move). Being ranked against -big/-mega to map where budget saturates.
   "ismcts-rollout-huge": {
