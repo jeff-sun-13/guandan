@@ -19,6 +19,8 @@ Two layers of docs. Know which kind you're touching.
   determinized search / ISMCTS), incl. engine prerequisites and measured perf budget. See ADR-0007.
 - `04-bots/learned-leaf-design.md` — **proposal** for the learned value-net leaf (distill the rollout
   → µs inference; strength + interactive speed). Awaiting approval; see ADR-0010 (Proposed).
+- `04-bots/strategy-and-gaps.md` — **what strong Guandan requires** (ranked) vs **what our bot uses/ignores**
+  (code-grounded), + prioritized next steps. The guiding reference after the budget plateau (2026-06-30).
 - `05-frontend/design.md` — UI/UX principles, mobile-first notes.
 - `06-prior-art/` — **everything we know about other people's Guandan bots** (the two DanZero
   papers, their public code, our friend's guandan.cards bot) + our blunt analysis of why they

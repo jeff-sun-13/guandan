@@ -2,12 +2,20 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-06-28_
+_Last updated: 2026-06-30_
 
 ## Milestone: **M1 complete (playable web app vs 3 heuristic bots). Prior-art documented. Repo now under git + pushed to GitHub (github.com/jeff-sun-13/guandan) and remote eval compute is LIVE (Hetzner box, ADR-0009). CHAMPION = `ismcts-rollout-huge` (1800 iters) by a hair, but the full budget-saturation curve (2026-06-29, overnight on Hetzner) shows **strength PLATEAUS ~1200–1800 iters** — Elo by budget: 150→1193, 300→1473, 600→1662, 1200→1842, 1800→1877; 3600 vs 1800 inconclusive (58%), 7200 vs 3600 no gain. **`1200` iters is the strength/latency SWEET SPOT** (tied with 1800, ~1s/move) → the ship target for live play. This REVISES the earlier "no plateau / compute-elastic" claim (that extrapolated from 150→600). **The search-budget lever is now TAPPED OUT** — next strength must come from history threading (ADR-0011), a better leaf, or the learned route (ADR-0010), NOT more iterations. Lineage: rollout-leaf ISMCTS beat `pimcStaticBot` ~82% (2026-06-26); the v2 thesis (search + belief + good leaf TOGETHER) is validated. Cost: ~0.6–2 s/move (fine for the strength-first campaign + for actual human play). Campaign: "maximize strength, long haul, final product only, do NOT wire into the app" (human, 2026-06-26). Instruments: parallel eval (`pnpm eval`) + Bradley-Terry ladder (`pnpm ladder`). External benchmark scoped (OpenGuanDan + DanZero), still needs the human's machine.**
 
-## ⚠️ Live remote box (2026-06-28) — Hetzner Cloud `178.156.158.230`, 8 vCPU, root ssh, repo at `~/guandan`
-Heavy evals run here, headless in tmux (survives ssh/dev-machine crashes). **It bills while alive — delete it in the Hetzner console when idle.** Full ops playbook + gotchas in `tools/remote/README.md`. As of this update, `ismcts-rollout-huge` vs `ismcts-rollout` is still running on it.
+## ⚠️ Live remote box (2026-06-30) — Hetzner Cloud `178.156.158.230`, 8 vCPU, root ssh, repo at `~/guandan`
+Heavy evals run here, headless in tmux (survives ssh/dev-machine crashes). **It bills while alive — delete it in the Hetzner console when idle.** Full ops playbook + gotchas in `tools/remote/README.md`. As of this update, the Path A tribute A/B (`ismcts-rollout-hist` vs `-nohist`, n=24) is running on it.
+
+## Current focus (2026-06-30) — past the budget plateau; the information axis is the open question
+Search budget is **solved** (knee ~1200–1800; ship 1200). Started the **information axis** (history threading, ADR-0011, Path A): built it; the engine stays pure, the arena threads a public play/pass/tribute record into `Observation.history`. **Results so far are sobering and reframed the problem:**
+- **Cross-trick passing memory: ~no gain** (47.9%, n=96). This is a NARROW slice — it does NOT mean history is useless (an earlier draft wrongly implied that; corrected).
+- **The real blind spot (strategy + gap analysis, 2026-06-30):** the bot counts cards at the *set* level (`outOfPlay`) but does **NOT attribute plays to players**, so it has **no per-opponent hand model** — most of what a strong human does. AND the belief-*sampling* mechanism (reweighting 6 uniform worlds) is too weak to represent sharp per-player inference; that's *why* passing scored 0. The one win (tribute ceiling) works because it's **constructive constrained dealing**, not reweighting.
+- **Tribute A/B running** (the one signal we built well, a hard ceiling) — the test of whether the hand-coded belief route has any further payoff on the rollout champion.
+- **Next-step priorities** (from the analyses, strength-per-effort): (1) **leaf/rollout quality, esp. endgame bomb management** — cheap, architecture-free, and "moves the knee right" (re-opens budget); (2) **tribute exact pinning** (pin the tributed card to the receiver + the return card to the giver — exact, near-free); (3) per-player belief ONLY if rebuilt as constructive constrained sampling, gated on a measured win; (4) the **learned policy** (ADR-0010) is the real home for the information + signalling axis (history is free to a net; search structurally can't *send* signals). Full write-up: `docs/04-bots/strategy-and-gaps.md`.
+- **Human steer (2026-06-30):** maximize self-play strength; external benchmark **deprioritized** (the human will play-test for "drastic mistakes" instead); wiring the (now playable-speed) champion into the web app is on the list for that play-testing.
 
 ## Bot-strength campaign (active — the north star, human-directed 2026-06-26)
 Direction: keep maximizing bot strength as a long research effort; integrate into the product once,

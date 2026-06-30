@@ -13,18 +13,33 @@ Append-only, newest at top. One entry per working session. Format:
   paid their highest non-wild single, so the tribute-aware determinization forbids dealing them any
   higher non-wild card, pushing the strong cards onto the other hidden hands). A/B toggle via
   `makeBeliefSampler({useHistory})`. **42 tests green** incl. the hard-ceiling guarantee.
-- **Result 1 — cross-trick passing does NOT help.** `ismcts-hist` vs `ismcts-nohist` (static leaf, 1200
-  iters) = **47.9%** (CI 38.2–57.8, n=96, inconclusive/slightly below). Note `nohist` still uses
-  *within-trick* passing, so this measures the MARGINAL value of remembering passes across tricks — and
-  it's ~zero. Sensible: the "who can't beat this" signal is mostly in the current trick; stale passes
-  add little. (Echoes the 2026-06-26 finding that belief sampling is only marginally helpful.)
-- **Result 2 — tribute A/B (the real test) RUNNING.** Since cross-trick passing is ~neutral, an A/B of
-  the full history config ≈ isolates TRIBUTE. Testing on the ROLLOUT champion (where the search actually
-  simulates opponents, so belief should matter most): `ismcts-rollout-hist` vs `-nohist`, n=24. Pending.
-- **Read:** the belief-SAMPLING mechanism (importance-weighting determinizations) looks like a weak
-  strength lever on this architecture. If tribute also doesn't move the rollout champion, the
-  information axis via belief sampling is largely tapped — pointing at the learned route (ADR-0010) or
-  a better leaf, where history is exploited natively. Awaiting the tribute number before concluding.
+- **Result 1 (NARROW) — cross-trick *passing memory* adds ~nothing.** `ismcts-hist` vs `ismcts-nohist`
+  (static leaf, 1200 iters) = **47.9%** (CI 38.2–57.8, n=96, inconclusive). `nohist` still uses
+  *within-trick* passing, so this only measures the MARGINAL value of remembering OLD passes — ~zero
+  (the "who can't beat this" signal is mostly in the current trick).
+- ⚠️ **CORRECTION — do NOT read this as "history doesn't help."** (Human flagged the overreach,
+  2026-06-30, correctly.) This test covered only ONE narrow slice — *passing*. It says nothing about the
+  far bigger unused signal: **per-player inference from what opponents PLAY.** What the bot actually does
+  vs ignores: it counts cards at the **set level** (`outOfPlay` — which cards are gone) but does **NOT
+  attribute plays to players**, so it has **no per-opponent hand model** (no "seat 2 dumped his high
+  cards and passed a 6 ⇒ he's weak/void up top ⇒ lead singles at him; danger is seat 3"). That
+  per-opponent modeling is most of what a strong human does, and we do none of it. So the information
+  axis is **largely UNTESTED, not tapped.** Also: a 6-sample importance reweighting is itself a weak
+  vehicle for rich inference. A pure-Guandan-strategy re-think + a code gap-analysis are in progress
+  before drawing conclusions or pivoting to the learned route.
+- **Tribute A/B RUNNING** (the one signal we DID build well — a hard ceiling). Since cross-trick passing
+  is ~neutral, the full-history A/B ≈ isolates TRIBUTE. On the ROLLOUT champion (belief matters most
+  there): `ismcts-rollout-hist` vs `-nohist`, n=24. Pending — report it, don't over-generalize from it.
+- **Strategy re-think (2 parallel agents) → new `docs/04-bots/strategy-and-gaps.md`.** First-principles
+  Guandan strategy (ranked by win-rate impact: pair-coordination > endgame control > bomb economy >
+  per-opponent reading > counting > tribute > signalling) + a code-grounded gap audit. Key conclusions:
+  (1) the bot's biggest blind spot is **no per-player play-attribution** (it counts cards at the set
+  level but never models each opponent's depletion); (2) the **belief-sampling mechanism** (reweighting 6
+  uniform worlds) is too weak to represent sharp per-player inference — that's *why* passing scored 0; it
+  only works when **constructive** (the tribute ceiling); (3) **highest strength-per-effort right now =
+  leaf/rollout quality, esp. endgame bomb management** (architecture-free, re-opens the budget knee); (4)
+  the information + signalling axis ultimately favors the **learned route** (ADR-0010). Docs corrected:
+  the earlier "information axis tapped → learned route" read here was an overreach from a narrow test.
 
 ---
 ## 2026-06-29 — Budget-saturation curve: strength PLATEAUS ~1200–1800 iters (revises the "no plateau" claim)
