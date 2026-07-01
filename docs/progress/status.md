@@ -18,14 +18,28 @@ Search budget is **solved** (knee ~1200–1800; ship 1200). Started the **inform
   unknown. **History defaulted OFF to protect the champion. It is PARKED, not abandoned — REQUIRED, MUST
   REVISIT** (ADR-0011 must-revisit notice; human directive 2026-06-30). The info/signalling axis likely
   wants the learned route (ADR-0010).
-- **ACTIVE BUILD — leaf/rollout quality, esp. endgame BOMB management** (the cheap, architecture-free win;
-  "moves the knee right" → can re-open the budget lever). Guided by the human's **"run-out" framework**
-  (`docs/04-bots/strategy-and-gaps.md`): value a hand by its run-out potential (bombs-vs-garbage ratio),
-  hold bombs mostly for late tempo but spend early/sacrificially when it wins out or rescues partner, and
-  track the live-bomb census (from `outOfPlay`) to avoid the over-bomb trap. Gate on the ladder.
-- **Other near-free items when convenient:** tribute exact pinning (pin tributed card to receiver + return
-  card to giver) — but only meaningful once history is un-parked.
-- **Human steer (2026-06-30):** maximize self-play strength; external benchmark **deprioritized** (the human will play-test for "drastic mistakes" instead); wiring the (now playable-speed) champion into the web app is on the list for that play-testing.
+- **Leaf/endgame tweak (run-out bomb trigger v1): ~neutral** (48.4%, n=64). Third neutral result in a row
+  (belief, passing, run-out) → the ISMCTS+rollout champion is **near its incremental hand-coded ceiling.**
+
+## ▶ ACTIVE DIRECTION (committed 2026-06-30) — the LEARNED ROUTE (ADR-0012). *Human will execute later.*
+Human committed to the learned route after the 3 neutral results. Staged:
+- **Stage 1 — strong learned LEAF (rich encoding).** Cheap, pure-TS, distills the rollout leaf on
+  determinized (perfect-info) worlds. Strength/speed win; **does NOT address the info axis** (leaf sees
+  all hands). **DONE:** rich encoding v2 (`packages/nn/src/encode.ts`, 86→124 feats: run-out shape, bomb
+  structure, control — see strategy-and-gaps.md). **NEXT (the concrete to-do):**
+  1. **Re-gen data** with the new encoding: `pnpm gen-data` (self-play → `(features, value)`; old
+     `tools/data/*.bin` + `tools/data/value-weights.json` are STALE — the encoding changed, regenerate).
+  2. **Retrain a BIGGER net** (Phase-1 net was deliberately tiny → underfit the richer input): `pnpm train`
+     — bump layer widths in the MLP config. Weights land at `tools/data/value-weights.json`.
+  3. **Eval** `ismcts-learned` vs the rollout champion on the ladder (registry auto-registers it when
+     weights exist). Gate: match/beat at µs leaf cost (→ afford more iterations → the budget curve says
+     that's stronger). Parity + no-regression per learned-leaf-design.md §6.
+  - Pipeline is pure-TS → runs LOCALLY (small first, to confirm the rich encoding helps) or on a
+    re-provisioned box for scale. **Box is DOWN** — re-provision via `tools/remote/setup.sh` (~10 min).
+- **Stage 2 — self-play RL POLICY conditioning on the Observation+history.** The info/signalling ceiling
+  and the home for the parked history work (ADR-0011). EXPENSIVE; **own go/no-go after Stage 1.**
+- **Human steer (2026-06-30):** maximize self-play strength; external benchmark **deprioritized** (human
+  play-tests for "drastic mistakes"); a playable-speed champion in the web app is a possible play-test aid.
 
 ## Bot-strength campaign (active — the north star, human-directed 2026-06-26)
 Direction: keep maximizing bot strength as a long research effort; integrate into the product once,
