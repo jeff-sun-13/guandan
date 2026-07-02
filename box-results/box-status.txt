@@ -1,15 +1,14 @@
-synced: 2026-07-02 13:13:05 UTC
+synced: 2026-07-02 22:17:51 UTC
 Warning: Permanently added '178.156.158.230' (ED25519) to the list of known hosts.
- 13:13:06 up 10:31,  2 users,  load average: 7.06, 6.97, 6.60
+ 22:17:52 up 19:36,  2 users,  load average: 6.75, 6.20, 6.48
 
-abq: 1 windows (created Thu Jul  2 02:46:45 2026)
 abq2: 1 windows (created Thu Jul  2 03:00:07 2026)
 abq3: 1 windows (created Thu Jul  2 03:07:03 2026)
 
--rw-r--r-- 1 root root  6305 Jul  2 12:55 /root/ab-queue.log
+-rw-r--r-- 1 root root  6019 Jul  2 22:15 /root/ab-queue-2.log
+-rw-r--r-- 1 root root  6842 Jul  2 14:43 /root/ab-queue.log
 -rw-r--r-- 1 root root 16235 Jul  2 02:46 /root/setup.log
-pulled ab-queue.log (6305 bytes)
-cat: /root/ab-queue-2.log: No such file or directory
-FAILED to pull ab-queue-2.log (see errors above)
+pulled ab-queue.log (6842 bytes)
+pulled ab-queue-2.log (6019 bytes)
 cat: /root/ab-queue-3.log: No such file or directory
 FAILED to pull ab-queue-3.log (see errors above)

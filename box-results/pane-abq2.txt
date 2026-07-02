@@ -1,20 +1,20 @@
+  edge (ismcts-learned): -0.2650 deal-value pts/deal  (SE 0.0677, z=-3.91)
+  d histogram: -6:14  -5:30  -4:27  -3:13  -2:43  -1:57  0:93  +1:36  +2:33  +3:
+15  +4:31  +5:7  +6:1
+  → ismcts-rollout-big is stronger (z ≤ −3 — safe even as a sequential stop)
+
+(400 paired deals = 800 games in 1864.9s)
 
 
+===== [2026-07-02 21:38:25] budget probe 1200 vs 600 =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-1200 ismcts-rollout-big 100
+--auto --max-deals=600 --seed=20001
+$ tsx evald.ts ismcts-rollout-1200 ismcts-rollout-big 100 --auto --max-deals=600
+ --seed=20001
 
+Paired-deal eval: ismcts-rollout-1200 vs ismcts-rollout-big — batch 100, seeds f
+rom 20001, sequential until |z|≥3 or 600 deals
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  [100 deals] edge +0.0850 pts/deal, z=0.58
+  [200 deals] edge +0.1875 pts/deal, z=1.84
 
