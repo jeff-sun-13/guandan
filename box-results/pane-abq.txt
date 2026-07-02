@@ -1,20 +1,20 @@
-$ tsx evald.ts ismcts-rollout-trib ismcts-rollout-nohist 100 --auto --max-deals=
+  d histogram: -5:1  -4:2  -2:2  -1:2  0:384  +1:3  +3:1  +4:2  +5:2  +6:1
+  → inconclusive so far (|z| < 1.96)
+
+(400 paired deals = 800 games in 2993.9s)
+
+
+===== [2026-07-02 09:18:01] exact-endgame leaf (rollout 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-endgame ismcts-rollout-big 1
+00 --auto --max-deals=600 --seed=10001
+$ tsx evald.ts ismcts-rollout-endgame ismcts-rollout-big 100 --auto --max-deals=
 600 --seed=10001
 
-Paired-deal eval: ismcts-rollout-trib vs ismcts-rollout-nohist — batch 100, seed
+Paired-deal eval: ismcts-rollout-endgame vs ismcts-rollout-big — batch 100, seed
 s from 10001, sequential until |z|≥3 or 600 deals
 
-  [100 deals] edge +0.2300 pts/deal, z=1.84
-  [200 deals] edge +0.1625 pts/deal, z=1.92
-  [300 deals] edge +0.1400 pts/deal, z=2.01
-  [400 deals] edge +0.0362 pts/deal, z=0.61
-
-
-
-
-
-
-
-
-
+  [100 deals] edge +0.0300 pts/deal, z=0.21
+  [200 deals] edge +0.1175 pts/deal, z=1.21
+  [300 deals] edge +0.1217 pts/deal, z=1.57
+  [400 deals] edge +0.1313 pts/deal, z=1.93
 
