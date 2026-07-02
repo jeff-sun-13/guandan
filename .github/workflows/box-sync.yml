@@ -32,7 +32,7 @@ jobs:
           done
           {
             echo "synced: $(date -u +%F' '%T) UTC"
-            ssh $SSH_OPTS "$BOX" 'uptime; echo; tmux ls 2>/dev/null; echo; ls -la ~/search-data/ 2>/dev/null; echo; tail -3 ~/search-data/part-0.log 2>/dev/null' || echo "box unreachable"
+            ssh $SSH_OPTS "$BOX" 'uptime; echo; tmux ls 2>/dev/null; echo; ls -la ~/search-data/ 2>/dev/null; echo; tail -3 ~/search-data/part-0.log 2>/dev/null; true' || echo "box unreachable"
           } > box-results/box-status.txt
       - name: Commit results if changed
         run: |
