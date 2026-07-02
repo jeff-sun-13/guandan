@@ -27,13 +27,31 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o BatchMode=yes"
           mkdir -p box-results
+          status=box-results/box-status.txt
+          echo "synced: $(date -u +%F' '%T) UTC" > "$status"
+          # one probe decides reachability; also shows what files actually exist on the box
+          if ! ssh $SSH_OPTS "$BOX" 'uptime; echo; tmux ls 2>/dev/null; echo; ls -la ~/*.log ~/search-data/ 2>/dev/null; true' >> "$status" 2>&1; then
+            echo "box unreachable" >> "$status"
+            exit 0
+          fi
+          # ssh+cat instead of scp: no SFTP dependency, and failures are visible in the status file
           for f in ab-queue.log ab-queue-2.log ab-queue-3.log; do
-            scp $SSH_OPTS "$BOX:$f" "box-results/$f" 2>/dev/null || true
+            if ssh $SSH_OPTS "$BOX" "cat ~/$f" > "box-results/$f.tmp" 2>>"$status"; then
+              mv "box-results/$f.tmp" "box-results/$f"
+              echo "pulled $f ($(wc -c < "box-results/$f") bytes)" >> "$status"
+            else
+              rm -f "box-results/$f.tmp"
+              echo "FAILED to pull $f (see errors above)" >> "$status"
+            fi
           done
-          {
-            echo "synced: $(date -u +%F' '%T) UTC"
-            ssh $SSH_OPTS "$BOX" 'uptime; echo; tmux ls 2>/dev/null; echo; ls -la ~/search-data/ 2>/dev/null; echo; tail -3 ~/search-data/part-0.log 2>/dev/null; true' || echo "box unreachable"
-          } > box-results/box-status.txt
+          # live tmux pane tails: the tee'd logs can lag behind (node buffers stdout to pipes)
+          for s in abq abq2 abq3; do
+            ssh $SSH_OPTS "$BOX" "tmux capture-pane -p -t $s 2>/dev/null | tail -20; true" > "box-results/pane-$s.txt" 2>/dev/null || true
+          done
+          # learned-leaf weights, once training on the box has written them
+          if ssh $SSH_OPTS "$BOX" 'cat ~/guandan/tools/data/value-weights.json' > /tmp/weights.json 2>/dev/null; then
+            mv /tmp/weights.json box-results/value-weights.json
+          fi
       - name: Commit results if changed
         run: |
           if [ ! -d box-results ]; then
