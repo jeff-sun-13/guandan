@@ -65,8 +65,22 @@ iterations past the knee add ~nothing, so distillation is a speed win, not a str
 **expert iteration** (distill champion policy → use as ROLLOUT policy → knee moves right → re-distill)
 as the bridge to Stage 2, then **policy-likelihood belief** (Skat/GIB-style; the partner runs OUR
 EXACT policy → near-exact partner inference — the principled ADR-0011 revival). Endgame exact solver
-+ designed pair-conventions as parallel tracks. Task list lives in the session tracker; details in
-changelog 2026-07-01.
++ designed pair-conventions as parallel tracks. Details in changelog 2026-07-01.
+
+**The 10-task plan (canonical copy — any session, any machine, work top-down):**
+1. ✅ Paired per-deal eval harness (`pnpm evald`, ADR-0013).
+2. ✅ Static-leaf value-scale bug fix + leaf contract test.
+3. ◑ Re-run contaminated experiments (rawleaf A/B ✅ +0.125 z=2.28; ISMCTS-vs-PIMC ✅ stands z=−6.2;
+   hist retest RUNNING on the box, queue 2).
+4. ◑ Per-type candidate retention (code ✅ + golden-pinned; A/Bs on the box, queues 1–2).
+5. ✅ Full public history (plays/receiver/return/resist) + exact-card pins (gate: box queue 1).
+6. ◑ A-level match-aware objective (code ✅; gate: box queue 1 `--level=14 --score=match`).
+7. ◑ Stage-1 learned leaf: encoding v3 ✅, gen-data fix ✅; train + parity gate on the box (queue 2).
+8. ◔ Expert iteration: searcher stats exposed ✅, dataset generating on the box (queue 3);
+   NEXT = observation/action encoder + policy net + use-as-rollout + re-measure knee.
+9. Policy-likelihood belief with EXACT partner inference (needs task 8's policy net + recorded plays ✅).
+10. ◑ Endgame exact solver ✅ (oracle-verified; `endgameSolve` gate in box queue 1) + designed
+    pair conventions (needs the human's conventions — ask when he's back).
 
 ## Milestone: **M1 complete (playable web app vs 3 heuristic bots). Prior-art documented. Repo now under git + pushed to GitHub (github.com/jeff-sun-13/guandan) and remote eval compute is LIVE (Hetzner box, ADR-0009). CHAMPION = `ismcts-rollout-huge` (1800 iters) by a hair, but the full budget-saturation curve (2026-06-29, overnight on Hetzner) shows **strength PLATEAUS ~1200–1800 iters** — Elo by budget: 150→1193, 300→1473, 600→1662, 1200→1842, 1800→1877; 3600 vs 1800 inconclusive (58%), 7200 vs 3600 no gain. **`1200` iters is the strength/latency SWEET SPOT** (tied with 1800, ~1s/move) → the ship target for live play. This REVISES the earlier "no plateau / compute-elastic" claim (that extrapolated from 150→600). **The search-budget lever is now TAPPED OUT** — next strength must come from history threading (ADR-0011), a better leaf, or the learned route (ADR-0010), NOT more iterations. Lineage: rollout-leaf ISMCTS beat `pimcStaticBot` ~82% (2026-06-26); the v2 thesis (search + belief + good leaf TOGETHER) is validated. Cost: ~0.6–2 s/move (fine for the strength-first campaign + for actual human play). Campaign: "maximize strength, long haul, final product only, do NOT wire into the app" (human, 2026-06-26). Instruments: parallel eval (`pnpm eval`) + Bradley-Terry ladder (`pnpm ladder`). External benchmark scoped (OpenGuanDan + DanZero), still needs the human's machine.**
 

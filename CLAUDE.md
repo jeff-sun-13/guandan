@@ -38,3 +38,15 @@ If you are ever tempted to put rules logic inside a React component or a server 
   in plain terms. Agents do essentially all the writing.
 - Wants to **start small** and ship a playable game vs bots first.
 - Cares most about **bot strength** as the eventual differentiator vs guandan.cards.
+- **The real end goal (2026-06-28):** the strongest COORDINATING BOT PAIR for the human + his
+  girlfriend (a human team) to play 2v2 against. Playable speed matters (~1s/move is fine);
+  bot-pair coordination/signalling is a design problem (both bots run the same code).
+- **Working style:** maximize strength as a long research campaign; integrate into the product
+  ONCE, at the end — do not wire bots into the app incrementally. Prefers agents keep going
+  autonomously; stop only when genuinely blocked on him.
+
+## If you are a CLOUD session (desktop off — e.g. phone-launched, 2026-07-01→06)
+This repo is the full memory: read `docs/progress/status.md` FIRST — it has the live state, the
+Hetzner eval box (178.156.158.230, three chained tmux experiment queues), and the exact collect
+commands. The human carries the box's SSH private key on his phone and will paste it when asked.
+Never commit private keys (public repo).
