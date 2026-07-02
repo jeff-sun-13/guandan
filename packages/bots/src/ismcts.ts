@@ -36,7 +36,8 @@ import {
 } from "@guandan/engine";
 import type { Bot } from "./index";
 import { heuristicBot, runoutBot } from "./heuristic";
-import { staticDealValue } from "./static-eval";
+import { boundedStaticValue } from "./static-eval";
+import { dealValue, dealValueCtx } from "./value";
 import type { LeafEvaluator } from "./pimc";
 import type { Sampler } from "./belief";
 
@@ -47,7 +48,12 @@ export interface IsmctsOptions {
   c?: number;
   /** Cap on moves considered at EACH node (keeps pass + go-out + cheapest plays). Bounds branching. */
   maxCandidates?: number;
-  /** Leaf evaluator for a non-terminal stopping state. Default: the cheap static eval. */
+  /**
+   * Leaf evaluator for a non-terminal stopping state. Default: the cheap static eval (bounded).
+   * CONTRACT: must return values on the DEAL-VALUE scale [-3, 3] — the search normalises with
+   * (v+3)/6 and mixes leaf values with exact terminal values, so an out-of-range leaf silently
+   * breaks UCB scaling AND makes unfinished positions outscore actual wins (the 2026-07-01 bug).
+   */
   leaf?: LeafEvaluator;
   /** Policy for the rollout leaf, when `leaf` is left unset and `rollout` is true. */
   rolloutBot?: Bot;
@@ -55,6 +61,24 @@ export interface IsmctsOptions {
   rollout?: boolean;
   /** How worlds are sampled each iteration. Default: uniform `determinize`. Pass a belief sampler. */
   sampler?: Sampler;
+  /**
+   * Condition the objective on `Observation.matchCtx` when present (2026-07-01): at a
+   * declarer-at-A deal, 1-2/1-3 = match win (±3, equal), 1-4 = a strike (∓0.5), and defender wins
+   * also earn the inflicted strike — see value.ts `dealValueCtx`. Applies to terminal values and
+   * the ROLLOUT leaf (a custom `leaf` and the static leaf stay unconditioned). Default false
+   * until gated on the harness.
+   */
+  useMatchContext?: boolean;
+  /**
+   * How the per-node candidate list is trimmed to `maxCandidates` (2026-07-01):
+   * - "cheapest" (default, the original): keep the cheapest plays overall. BIAS WARNING: at wide
+   *   (leading) nodes a 27-card hand has 25–40+ legal plays, so bombs and top singles/pairs sort
+   *   past the cap and are NEVER searched — for us at the root, or for in-tree opponents (their
+   *   interruptions go unmodelled). The search structurally cannot consider "seize tempo" plays.
+   * - "perType": keep the cheapest few of EVERY combo type (so bombs stay searchable) plus the
+   *   highest single (the control lead), à la GS2's top-k-per-action-type (docs/06-prior-art/gs2.md §6).
+   */
+  candidates?: "cheapest" | "perType";
 }
 
 /** One edge out of a tree node: the child plus the ISMCTS selection statistics for that action. */
@@ -74,15 +98,8 @@ interface Node {
   children: Map<string, Child>;
 }
 
-/** Value of a finished deal from `myTeam`'s view: +3/+2/+1 if our side won (by partner finish). */
-function dealValue(finish: Player[], myTeam: number): number {
-  const winTeam = teamOf(finish[0] as Player);
-  const winSeats = [0, 1, 2, 3].filter((s) => teamOf(s) === winTeam);
-  const winPos = winSeats.map((s) => finish.indexOf(s)).sort((a, b) => a - b);
-  const partnerPos = winPos[1] as number;
-  const mag = partnerPos === 1 ? 3 : partnerPos === 2 ? 2 : 1;
-  return winTeam === myTeam ? mag : -mag;
-}
+/** How a finished deal is valued from a team's view (standard, or match-aware via dealValueCtx). */
+type ValueOf = (finish: Player[], team: number) => number;
 
 /** Cheapest-first ordering key (mirrors the heuristic / PIMC): low plays first, bombs last. */
 function powerKey(c: Combo): number {
@@ -103,27 +120,66 @@ function moveKey(m: Move): string {
   return `${c.type}:${c.rank}:${c.length}`;
 }
 
+type PlayMove = Extract<Move, { kind: "play" }>;
+
+/**
+ * "perType" trimming: guarantee type coverage instead of global cheapness. Keep the cheapest
+ * `keepPerType` plays of EVERY combo type present, plus the single highest single (the control
+ * lead a cheapest-only cap always drops). If that still exceeds `room`, keep the cheapest ONE per
+ * type first, then fill the remainder cheapest-first — coverage survives any cap.
+ */
+function trimPerType(plays: PlayMove[], room: number, keepPerType = 2): PlayMove[] {
+  const byType = new Map<string, PlayMove[]>();
+  for (const m of plays) {
+    const arr = byType.get(m.combo.type);
+    if (arr) arr.push(m);
+    else byType.set(m.combo.type, [m]);
+  }
+  const kept: PlayMove[] = [];
+  const overflow: PlayMove[] = [];
+  for (const arr of byType.values()) {
+    arr.sort((a, b) => powerKey(a.combo) - powerKey(b.combo));
+    for (let i = 0; i < arr.length; i++) {
+      if (i === 0) kept.push(arr[i] as PlayMove);
+      else if (i < keepPerType) overflow.push(arr[i] as PlayMove);
+    }
+    // The control lead: the TOP single (beats everything but jokers/level) — cheapest-caps drop it.
+    const singles = byType.get("single");
+    if (arr === singles && arr.length > keepPerType) overflow.push(arr[arr.length - 1] as PlayMove);
+  }
+  overflow.sort((a, b) => powerKey(a.combo) - powerKey(b.combo));
+  const out = kept.concat(overflow.slice(0, Math.max(0, room - kept.length)));
+  if (out.length > room) out.length = room; // more types than room: cheapest-one-per-type wins
+  out.sort((a, b) => powerKey(a.combo) - powerKey(b.combo));
+  return out;
+}
+
 /**
  * Legal moves at a node, in EXPANSION-PRIORITY order and capped to `max`. Order: hand-emptying
- * go-out plays first, then non-bomb plays cheapest-first, then pass last. Because we expand untried
- * moves in this order (not randomly), the tree's spine follows sensible play, so shallow leaves are
- * evaluated after good continuations instead of random ones — the key to ISMCTS paying off at an
- * affordable iteration budget. Pass and go-out are always retained when present.
+ * go-out plays first, then plays cheapest-first, then pass last. Pass and go-out are always
+ * retained when present. `scheme` picks how the play list is trimmed (see IsmctsOptions.candidates
+ * — "cheapest" is the original global-cheapest cap; "perType" keeps every combo type searchable).
+ * Exported for tests only.
  */
-function candidatesAt(state: GameState, seat: Player, max: number): Move[] {
+export function candidatesAt(state: GameState, seat: Player, max: number, scheme: "cheapest" | "perType"): Move[] {
   const legal = legalMoves(state, seat);
   const handSize = (state.hands[seat] as number[]).length;
   const goOut: Move[] = [];
-  const plays: Extract<Move, { kind: "play" }>[] = [];
+  let plays: PlayMove[] = [];
   let pass: Move | null = null;
   for (const m of legal) {
     if (m.kind === "pass") pass = m;
     else if (m.cards.length === handSize) goOut.push(m);
     else plays.push(m);
   }
-  plays.sort((a, b) => powerKey(a.combo) - powerKey(b.combo));
   const room = Math.max(0, max - goOut.length - (pass ? 1 : 0));
-  const ordered: Move[] = [...goOut, ...plays.slice(0, room)];
+  if (scheme === "perType" && plays.length > room) {
+    plays = trimPerType(plays, room);
+  } else {
+    plays.sort((a, b) => powerKey(a.combo) - powerKey(b.combo));
+    plays = plays.slice(0, room);
+  }
+  const ordered: Move[] = [...goOut, ...plays];
   if (pass) ordered.push(pass);
   return ordered;
 }
@@ -135,8 +191,12 @@ export function makeIsmctsBot(opts: IsmctsOptions = {}): Bot {
   const maxCandidates = opts.maxCandidates ?? 20;
   const rolloutBot = opts.rolloutBot ?? heuristicBot;
   const sample = opts.sampler ?? determinize;
+  const scheme = opts.candidates ?? "cheapest";
+  const useMatchCtx = opts.useMatchContext ?? false;
   const leanRollout = rolloutBot === heuristicBot || rolloutBot === runoutBot; // both ignore obs.outOfPlay
-  const leaf: LeafEvaluator =
+
+  /** Leaf for a given finish valuation (rebuilt per decision when match-aware — a cheap closure). */
+  const makeLeaf = (valueOf: ValueOf): LeafEvaluator =>
     opts.leaf ??
     (opts.rollout
       ? // Rollout leaf fast-path: trusted apply (moves are legal by construction) + lean observe
@@ -151,20 +211,27 @@ export function makeIsmctsBot(opts: IsmctsOptions = {}): Bot {
               : observe(st, seat);
             st = applyMoveTrusted(st, rolloutBot(obs, legalMoves(st, seat), rng));
           }
-          return dealValue(result(st), myTeam);
+          return valueOf(result(st), myTeam);
         }
-      : (s, myTeam) => staticDealValue(s, myTeam));
+      : (s, myTeam) => boundedStaticValue(s, myTeam));
+
+  const plainLeaf = makeLeaf(dealValue);
 
   return (obs: Observation, legal: Move[], rng: Rng): Move => {
     if (legal.length === 0) throw new Error("ismctsBot got no legal moves");
     if (legal.length === 1) return legal[0] as Move; // forced
+
+    // Match-aware objective (value.ts): only when enabled AND the orchestrator supplied a context.
+    const ctx = useMatchCtx ? obs.matchCtx : undefined;
+    const valueOf: ValueOf = ctx ? (f, t) => dealValueCtx(f, t, ctx) : dealValue;
+    const leaf = ctx ? makeLeaf(valueOf) : plainLeaf;
 
     const rootTeam = teamOf(obs.player);
     const rootMoves = new Map<string, Move>(legal.map((m) => [moveKey(m), m]));
     const root: Node = { visits: 0, children: new Map() };
 
     for (let it = 0; it < iterations; it++) {
-      runIteration(root, obs, rootTeam, rng, leaf, c, maxCandidates, sample);
+      runIteration(root, obs, rootTeam, rng, leaf, c, maxCandidates, sample, scheme, valueOf);
     }
 
     // Robust child: the most-SELECTED root action (ties broken by mean reward). Standard MCTS choice.
@@ -194,6 +261,8 @@ function runIteration(
   c: number,
   maxCandidates: number,
   sample: Sampler,
+  scheme: "cheapest" | "perType",
+  valueOf: ValueOf,
 ): void {
   let state = sample(rootObs, rng); // a fresh world every iteration — the ISMCTS essence
   let node = root;
@@ -203,7 +272,7 @@ function runIteration(
   // SELECTION + one EXPANSION.
   while (!isTerminal(state)) {
     const seat = state.toAct;
-    const moves = candidatesAt(state, seat, maxCandidates);
+    const moves = candidatesAt(state, seat, maxCandidates, scheme);
     if (moves.length === 0) break;
     const keyed = moves.map((m) => [moveKey(m), m] as const);
     const availKeys = keyed.map(([k]) => k);
@@ -245,7 +314,7 @@ function runIteration(
   }
 
   // LEAF: exact value if terminal, else the (cheap) leaf evaluator. Normalise [-3,3] → [0,1].
-  const vRoot = isTerminal(state) ? dealValue(result(state), rootTeam) : leaf(state, rootTeam, rng);
+  const vRoot = isTerminal(state) ? valueOf(result(state), rootTeam) : leaf(state, rootTeam, rng);
   const q = (vRoot + 3) / 6;
 
   // BACKPROP. Availability: every available action present in the tree at each visited node.

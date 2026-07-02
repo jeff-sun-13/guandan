@@ -38,8 +38,22 @@ export const REGISTRY: Record<string, NamedBot> = {
     bot: makePimcBot({ leaf: staticLeaf, determinizations: 400, maxCandidates: 32 }),
   },
   // ISMCTS (bot v2.2) — one infoset tree, static leaf. -fast/-big trade iterations for speed/strength.
+  // NOTE (2026-07-01): the default static leaf is now BOUNDED (3·tanh(raw/12) ∈ [-3,3]). The raw
+  // unbounded leaf broke ISMCTS's (v+3)/6 normalisation — UCB exploration drowned + unfinished
+  // positions outscored real wins — contaminating every static-leaf ISMCTS result before this date.
   ismcts: { name: "ismcts", bot: makeIsmctsBot() },
   "ismcts-fast": { name: "ismcts-fast", bot: makeIsmctsBot({ iterations: 600 }) },
+  // The OLD broken config (raw unbounded static leaf), kept ONLY as the A/B control quantifying the
+  // 2026-07-01 scale-bug fix. Do not build on it.
+  "ismcts-rawleaf": { name: "ismcts-rawleaf", bot: makeIsmctsBot({ iterations: 600, leaf: staticLeaf }) },
+  // Candidate-trimming A/B (2026-07-01): "perType" keeps bombs + the top single searchable at wide
+  // nodes (the cheapest-only cap silently pruned them — see IsmctsOptions.candidates). Pairs differ
+  // ONLY in the trimming scheme.
+  "ismcts-pertype": { name: "ismcts-pertype", bot: makeIsmctsBot({ iterations: 600, candidates: "perType" }) },
+  "ismcts-rollout-pertype": {
+    name: "ismcts-rollout-pertype",
+    bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief, candidates: "perType" }),
+  },
   "ismcts-big": { name: "ismcts-big", bot: makeIsmctsBot({ iterations: 4000, maxCandidates: 28 }) },
   // Belief-conditioned variants (bot v2 step 4): same search, hidden hands sampled from passing behaviour.
   "pimc-belief": {
@@ -116,6 +130,29 @@ export const REGISTRY: Record<string, NamedBot> = {
   "ismcts-rollout-nohist": {
     name: "ismcts-rollout-nohist",
     bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: makeBeliefSampler({ useHistory: false }) }),
+  },
+  // --- Separated history lanes (2026-07-01) — A/B each against -nohist to find which lane pays ---
+  // Lane 2 only: HARD tribute/resist constraints incl. the new exact-card pins (no passing memory).
+  "ismcts-rollout-trib": {
+    name: "ismcts-rollout-trib",
+    bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: makeBeliefSampler({ useTributeInfo: true }) }),
+  },
+  // Lane 1 only: SOFT cross-trick passing reweight (the suspect half of Path A).
+  "ismcts-rollout-pass": {
+    name: "ismcts-rollout-pass",
+    bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: makeBeliefSampler({ usePassHistory: true }) }),
+  },
+  // Match-aware objective A/B (2026-07-01, value.ts dealValueCtx): at declarer-at-A deals 1-2/1-3
+  // both = match win, 1-4 = a strike — the standard +3/+2/+1 is wrong there. Differs from
+  // -nohist ONLY in useMatchContext. Gate with `pnpm evald ... --level=14 --score=match`.
+  "ismcts-rollout-matchaware": {
+    name: "ismcts-rollout-matchaware",
+    bot: makeIsmctsBot({
+      iterations: 600,
+      rollout: true,
+      sampler: makeBeliefSampler({ useHistory: false }),
+      useMatchContext: true,
+    }),
   },
   "ismcts-rollout-2400": {
     name: "ismcts-rollout-2400",

@@ -67,8 +67,23 @@ export function bombCount(hand: Card[], level: number): number {
 }
 
 /**
+ * `staticDealValue` squashed into the DEAL-VALUE scale [-3, 3] via 3·tanh(v/12). Use THIS as an
+ * ISMCTS leaf: the search normalises leaf values as (v+3)/6 assuming the ±3 deal-value range, and
+ * mixes them with exact terminal values (±3). Feeding it the raw static value (±15..±60) broke both
+ * — UCB exploration was drowned by a reward range ~10× too wide, and a strong-but-unfinished
+ * position could outscore an actual won deal. (Found 2026-07-01; the raw-value bug contaminated all
+ * static-leaf ISMCTS results up to then.) The squash is monotone, so PIMC-style argmax-of-averages
+ * ranking is *nearly* unchanged (averages of a monotone transform can reorder near-ties); PIMC
+ * keeps the raw value (`staticLeaf`), which is scale-invariant there.
+ */
+export function boundedStaticValue(state: GameState, team: number): number {
+  return 3 * Math.tanh(staticDealValue(state, team) / 12);
+}
+
+/**
  * Static value of `state` from `team`'s perspective (higher = better). Reads all four hands, so it
- * is meant for a DETERMINIZED full state (a sampled world), not a hidden one.
+ * is meant for a DETERMINIZED full state (a sampled world), not a hidden one. UNBOUNDED scale
+ * (±15..±60 typical) — fine for PIMC's argmax-of-averages; for ISMCTS use `boundedStaticValue`.
  */
 export function staticDealValue(state: GameState, team: number): number {
   let v = 0;
