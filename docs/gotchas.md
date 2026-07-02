@@ -30,6 +30,18 @@ future agent (or the human) an hour. Newest at top. Include the date.
   "no effect"; and before declaring a strategic pivot on null results, compute what effect size the
   instrument could actually have seen.
 
+## 2026-07-01 — Detached Windows queue logs LIE: pnpm buffers stdout to pipes (results lost on kill)
+- The local `ab-queue.ps1` piped `powershell -Command "pnpm evald …" 2>&1 | ForEach-Object
+  { Add-Content … }`. Node/pnpm buffer stdout when it's a pipe (not a TTY), so the log showed
+  batch-1 of experiment 1 while the queue was ACTUALLY on experiment 4 — and killing the queue at
+  shutdown lost experiments 1–3's results entirely (buffered, never flushed). The Linux box's
+  `cmd | tee log` behaves better but the same buffering caveat applies to anything that pipes node.
+- **Rules:** (1) don't trust a detached queue's log tail as "current state" — check the PROCESS list
+  (worker command lines name the experiment); (2) have each experiment write its OWN result artifact
+  (the `--auto` runner prints per-batch lines — those flush on process exit, so per-experiment
+  wrappers that exit frequently are safer than one long pipe); (3) before killing a queue, grab
+  results off the still-alive processes' logs or accept the loss consciously.
+
 ## 2026-07-01 — Long eval + live code edits don't mix (tsx workers load the CURRENT tree)
 - The `--auto` sequential eval spawns FRESH worker processes per batch, and `tsx` compiles whatever
   is on disk at spawn time. Editing bot code while a multi-batch eval runs means later batches run

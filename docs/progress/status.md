@@ -31,13 +31,22 @@ bug. This session (all changes tested, 167 tests green):
 6. **Learned-leaf pipeline bug found (not yet fixed): `gen-data.ts` trains ONLY at level 2** — every
    other level (wild moves!) is out-of-distribution. Fix lands with the Stage-1 re-gen (+ encoding
    gaps: trick topPlayer missing, straights invisible, wild-completed bombs uncounted).
-7. **⏳ Experiments running on TWO machines — read both logs before drawing conclusions:**
-   - **Local** (`tools/ab-queue.log`): hist-vs-nohist retest (batch 1: −0.095, z=−0.66) then
-     perType-static. Hist bots are much slower now (pin machinery) — be patient.
-   - **Hetzner box, RE-PROVISIONED 2026-07-01** (`ssh root@178.156.158.230`, log `~/ab-queue.log`,
-     tmux session `abq`): tribute-lane, pass-lane, perType, match-aware @A + no-regression,
-     exact-endgame — champion-config paired evals, seeds 10001+ (poolable with local). **Delete the
-     box in the Hetzner console when the campaign idles — it bills while alive.**
+7. **⏳ ALL experiments now on the Hetzner box (overnight, 2026-07-01→02). The dev machine is OFF;
+   the human is away ~5 days; the box stays up and holds ALL results until collected.**
+   - **Queue 1** (`tmux abq`, log `~/ab-queue.log`, seeds 10001+): tribute-lane, pass-lane,
+     perType, match-aware @A + no-regression, exact-endgame — champion-config paired evals.
+   - **Queue 2** (`tmux abq2`, log `~/ab-queue-2.log`, seeds 20001+, auto-chains when queue 1
+     prints QUEUE_COMPLETE, 18 h fallback): hist + perType-static retests (migrated from the dev
+     machine), the COMBINED challenger `ismcts-rollout-combo` (endgame+perType), Stage-1 gen-data +
+     train ON the box, the `ismcts-learned` parity gate, and budget-curve probes (1200v600,
+     1800v1200) on the paired harness.
+   - **FIRST ACTION NEXT SESSION — collect before anything else, then the human deletes the box:**
+     `ssh root@178.156.158.230 "cat ~/ab-queue.log ~/ab-queue-2.log"` and
+     `scp root@178.156.158.230:guandan/tools/data/value-weights.json tools/data/` (+ value-v3.bin
+     if re-training locally is undesirable). Then gate decisions per experiment at |z|≥3.
+   - Local partials before shutdown (superseded by box reruns): hist batch 1 = −0.095 pts/deal
+     (z=−0.66, n=100, seeds 1..100 — POOLABLE with box seeds 20001+); local Stage-1 train reached
+     epoch 1 val RMSE 1.571 (net [144,128,64,1]; predict-mean 2.414, linear 1.667).
 8. **Endgame exact solver landed** (evening): `solveEndgame` (oracle-verified alpha-beta), and
    `endgameSolve: true` makes every rollout finish EXACTLY at ≤8 cards (~0.25 ms median). A/B on
    the box. **Encoding v3** landed (topPlayer/leader, run structure, wild-aware bombs → 144 feats).
