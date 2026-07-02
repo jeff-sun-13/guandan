@@ -1,0 +1,47 @@
+# Pull experiment logs off the Hetzner eval box into the repo every 6 hours (2026-07-01).
+# Purpose: while the dev machine is off (human away ~5 days), results become readable from
+# ANYWHERE — phone Claude Code sessions, the GitHub UI — without needing the box's SSH key.
+# Requires the repo secret BOX_SSH_KEY (the box's /root/.ssh/phone_access private key).
+# Safe on a public repo: secrets are encrypted, log-redacted, and not exposed to fork PRs.
+# Every step is best-effort: a deleted/unreachable box must NOT fail the workflow.
+name: box-sync
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pull logs from the eval box
+        env:
+          BOX_SSH_KEY: ${{ secrets.BOX_SSH_KEY }}
+          BOX: root@178.156.158.230
+        run: |
+          if [ -z "$BOX_SSH_KEY" ]; then echo "BOX_SSH_KEY not configured — skipping"; exit 0; fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$BOX_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          SSH_OPTS="-o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o BatchMode=yes"
+          mkdir -p box-results
+          for f in ab-queue.log ab-queue-2.log ab-queue-3.log; do
+            scp $SSH_OPTS "$BOX:$f" "box-results/$f" 2>/dev/null || true
+          done
+          {
+            echo "synced: $(date -u +%F' '%T) UTC"
+            ssh $SSH_OPTS "$BOX" 'uptime; echo; tmux ls 2>/dev/null; echo; ls -la ~/search-data/ 2>/dev/null; echo; tail -3 ~/search-data/part-0.log 2>/dev/null' || echo "box unreachable"
+          } > box-results/box-status.txt
+      - name: Commit results if changed
+        run: |
+          git config user.name "box-sync"
+          git config user.email "actions@users.noreply.github.com"
+          git add box-results
+          if git diff --cached --quiet; then
+            echo "no changes"
+          else
+            git commit -m "box-sync: eval box logs [skip ci]"
+            git push
+          fi
