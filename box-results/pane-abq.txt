@@ -1,0 +1,20 @@
+$ tsx evald.ts ismcts-rollout-trib ismcts-rollout-nohist 100 --auto --max-deals=
+600 --seed=10001
+
+Paired-deal eval: ismcts-rollout-trib vs ismcts-rollout-nohist — batch 100, seed
+s from 10001, sequential until |z|≥3 or 600 deals
+
+  [100 deals] edge +0.2300 pts/deal, z=1.84
+  [200 deals] edge +0.1625 pts/deal, z=1.92
+  [300 deals] edge +0.1400 pts/deal, z=2.01
+  [400 deals] edge +0.0362 pts/deal, z=0.61
+
+
+
+
+
+
+
+
+
+
