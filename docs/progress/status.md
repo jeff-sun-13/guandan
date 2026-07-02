@@ -31,11 +31,19 @@ bug. This session (all changes tested, 167 tests green):
 6. **Learned-leaf pipeline bug found (not yet fixed): `gen-data.ts` trains ONLY at level 2** — every
    other level (wild moves!) is out-of-distribution. Fix lands with the Stage-1 re-gen (+ encoding
    gaps: trick topPlayer missing, straights invisible, wild-completed bombs uncounted).
-7. **⏳ Experiment queue running** (detached: `tools/ab-queue.ps1` → log `tools/ab-queue.log`):
-   hist-vs-nohist retest (fixed leaf + pins), perType A/B (static then champion config),
-   tribute-lane-alone on the champion. **Read the log before drawing any belief/candidate
-   conclusions.** Champion-config paired runs really want the Hetzner box back (down; re-provision
-   `tools/remote/setup.sh`).
+7. **⏳ Experiments running on TWO machines — read both logs before drawing conclusions:**
+   - **Local** (`tools/ab-queue.log`): hist-vs-nohist retest (batch 1: −0.095, z=−0.66) then
+     perType-static. Hist bots are much slower now (pin machinery) — be patient.
+   - **Hetzner box, RE-PROVISIONED 2026-07-01** (`ssh root@178.156.158.230`, log `~/ab-queue.log`,
+     tmux session `abq`): tribute-lane, pass-lane, perType, match-aware @A + no-regression,
+     exact-endgame — champion-config paired evals, seeds 10001+ (poolable with local). **Delete the
+     box in the Hetzner console when the campaign idles — it bills while alive.**
+8. **Endgame exact solver landed** (evening): `solveEndgame` (oracle-verified alpha-beta), and
+   `endgameSolve: true` makes every rollout finish EXACTLY at ≤8 cards (~0.25 ms median). A/B on
+   the box. **Encoding v3** landed (topPlayer/leader, run structure, wild-aware bombs → 144 feats).
+   **Stage-1 retrain in flight** (`tools/train-v3.log`): 600k rows (levels+tribute sampled),
+   [144→128→64→1]; linear baseline = val RMSE 1.667 (predict-mean 2.414). Gate = parity-at-speed
+   vs the champion on the paired harness.
 **Roadmap adjustment (from the review, human-approved "do them all"):** before the Stage-2 RL spend,
 run the cheap corrected-baseline levers (leaf/candidates/objective/tribute-pins via evald), then
 Stage 1 with the gen-data+encoding fixes (honest gate: PARITY at speed — the budget curve says extra

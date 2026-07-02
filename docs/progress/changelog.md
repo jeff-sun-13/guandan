@@ -4,6 +4,34 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-01 (evening) — Endgame exact solver; encoding v3; Hetzner box re-provisioned + remote queue; Stage-1 retrain started
+Continuation of the audit session (human: "do them all, keep going"). All committed + pushed.
+- **Endgame EXACT solver (`packages/bots/src/endgame.ts`).** Alpha-beta over the 2-team deal value on
+  a determinized state; verified against an unpruned minimax oracle + a self-consistency test
+  (playing the solver's own line realizes its claimed value). Sizing (`tools/bench-endgame.ts`):
+  **≤8 cards ⇒ median 57 nodes ≈ 0.25 ms** (9–12: ~2.4k nodes; 13+: too big for a leaf).
+  **`makeIsmctsBot({endgameSolve:true})`** finishes every rollout EXACTLY once ≤8 cards remain — the
+  leaf-quality lever the run-out analysis wanted, at ~zero net cost (the solve replaces the rollout's
+  misplayed last plies). Default off; A/B `ismcts-rollout-endgame` queued on the box.
+- **Encoding v3 (86→124→144 features):** trick `topPlayer`+leader relative one-hots (partner-holds-it
+  vs opponent-holds-it was NOT encoded), per-seat run structure (longest natural run, ranks in ≥5
+  runs), wild-aware bomb census (natural bombs vs wild-completed OPTIONS, wild-aware biggest bomb).
+  Registry refuses stale-dimension weights. Old datasets/nets stale — regenerated (below).
+- **Hetzner box re-provisioned by the human** (same IP, new host key + fresh OS; ssh key added).
+  Bootstrapped (Node 24 + pnpm + tests green) and running **`tools/remote/run-queue.sh` in tmux**
+  (~/ab-queue.log): tribute-lane, pass-lane, perType, match-aware @A + no-regression, exact-endgame —
+  all champion-config (rollout 600) paired evals at seeds 10001+ (poolable with local seeds 1..N).
+- **Local box in parallel:** hist-vs-nohist retest (batch 1: −0.095 pts/deal, z=−0.66, running to
+  300) then perType-static. NOTE: hist bots are much slower per move now (pin machinery); expected.
+- **Stage-1 retrain STARTED:** `pnpm gen-data 30000 10` with v3 encoding + level/tribute sampling →
+  600k rows in 36 s; training [144→128→64→1], 30 epochs (tools/train-v3.log). Two reference points:
+  predict-mean RMSE 2.414; an accidental LINEAR run (PowerShell comma-operator ate `--hidden 128,64`
+  → net [144→1]) converged at **val RMSE ≈ 1.667 — the linear-model baseline the MLP must beat.**
+  Gate after training: `ismcts-learned` vs champion on the paired harness, expectation = parity at
+  speed (ADR-0012 Stage-1 expectation corrected per the budget-curve plateau).
+- **train.ts:** `--hidden A,B` flag; default widened to [128,64] (Phase-1's [64,32] deliberately tiny).
+
+---
 ## 2026-07-01 — Critical review of all docs+code found real bugs; new high-power paired-deal harness; objective + history fixes
 Full critical read-through of docs + a code audit (human asked to challenge prior agents' work), then
 built the fixes. Four real defects found and addressed:
