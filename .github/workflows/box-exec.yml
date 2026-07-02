@@ -1,0 +1,32 @@
+# Run an arbitrary command on the Hetzner eval box from anywhere — the WRITE path of the
+# bridge (box-sync.yml is the read path). Cloud sessions cannot SSH, but Actions runners can:
+# dispatch this workflow with a `command` input (GitHub MCP `actions_run_trigger`), then read
+# the output from the job log (`get_job_logs`). Round-trip ~30 s.
+# Uses: requeue/kill experiments, `cd ~/guandan && git pull` to ship fixes onto the box,
+# restart tmux queues, inspect files. LONG jobs must be launched detached in tmux (see
+# tools/remote/README.md playbook) — the job itself times out at 15 min.
+# Requires the BOX_SSH_KEY repo secret (same as box-sync).
+name: box-exec
+on:
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "Shell command to run on the box (long jobs: detach in tmux)"
+        required: true
+        type: string
+jobs:
+  exec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Run command on the eval box
+        env:
+          BOX_SSH_KEY: ${{ secrets.BOX_SSH_KEY }}
+          BOX: root@178.156.158.230
+          CMD: ${{ inputs.command }}
+        run: |
+          if [ -z "$BOX_SSH_KEY" ]; then echo "BOX_SSH_KEY not configured"; exit 1; fi
+          mkdir -p ~/.ssh
+          printf '%s\n' "$BOX_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh -o StrictHostKeyChecking=accept-new -o ConnectTimeout=20 -o BatchMode=yes "$BOX" "$CMD"
