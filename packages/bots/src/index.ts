@@ -19,6 +19,7 @@ export { makeLearnedLeaf } from "./learned-leaf";
 export { makeBeliefSampler, beliefSampler, currentTrickPassers, type Sampler, type BeliefOptions } from "./belief";
 export { staticDealValue, boundedStaticValue, playsToEmpty, bombCount } from "./static-eval";
 export { dealValue, dealValueCtx } from "./value";
+export { solveEndgame, cardsRemaining, type EndgameSolve } from "./endgame";
 export { playMatch, applyTributePlan, recordMove, type MatchOutcome } from "./arena";
 export {
   evaluateHeadToHead,

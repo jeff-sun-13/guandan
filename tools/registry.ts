@@ -142,6 +142,12 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout-pass",
     bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: makeBeliefSampler({ usePassHistory: true }) }),
   },
+  // Exact-endgame rollout A/B (2026-07-01): rollouts stop at ≤8 cards and return the alpha-beta
+  // solved value (endgame.ts) — every leaf gets an exact finish. Differs from -big ONLY in that.
+  "ismcts-rollout-endgame": {
+    name: "ismcts-rollout-endgame",
+    bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief, endgameSolve: true }),
+  },
   // Match-aware objective A/B (2026-07-01, value.ts dealValueCtx): at declarer-at-A deals 1-2/1-3
   // both = match win, 1-4 = a strike — the standard +3/+2/+1 is wrong there. Differs from
   // -nohist ONLY in useMatchContext. Gate with `pnpm evald ... --level=14 --score=match`.

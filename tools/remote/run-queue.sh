@@ -38,5 +38,10 @@ run "matchaware @A (rollout 600)" \
 run "matchaware default (no-regression)" \
   pnpm evald ismcts-rollout-matchaware ismcts-rollout-nohist 100 --auto --max-deals=400 --seed=10001
 
+# 6. Exact-endgame rollouts: every leaf's rollout finishes with the alpha-beta solved value at
+#    ≤8 cards (endgame.ts; ~0.25 ms median). The leaf-quality lever the run-out analysis wanted.
+run "exact-endgame leaf (rollout 600)" \
+  pnpm evald ismcts-rollout-endgame ismcts-rollout-big 100 --auto --max-deals=600 --seed=10001
+
 echo ""
 echo "QUEUE_COMPLETE"

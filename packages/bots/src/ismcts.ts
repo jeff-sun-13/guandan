@@ -38,6 +38,7 @@ import type { Bot } from "./index";
 import { heuristicBot, runoutBot } from "./heuristic";
 import { boundedStaticValue } from "./static-eval";
 import { dealValue, dealValueCtx } from "./value";
+import { solveEndgame, cardsRemaining } from "./endgame";
 import type { LeafEvaluator } from "./pimc";
 import type { Sampler } from "./belief";
 
@@ -61,6 +62,16 @@ export interface IsmctsOptions {
   rollout?: boolean;
   /** How worlds are sampled each iteration. Default: uniform `determinize`. Pass a belief sampler. */
   sampler?: Sampler;
+  /**
+   * Finish rollouts EXACTLY (2026-07-01): once a rollout reaches ≤8 cards total, return the
+   * `solveEndgame` value (alpha-beta, exact — median ~57 nodes ≈ 0.25 ms at that size,
+   * `tools/bench-endgame.ts`) instead of playing the heuristic to the end. Endgames decide
+   * finishing order — the entire objective — and the heuristic rollout misplays them; this
+   * upgrades EVERY leaf evaluation at ~zero net cost (the solve replaces the rollout's last
+   * plies). Default false until gated. Only applies to the rollout leaf under the STANDARD
+   * objective (the solver optimizes dealValue; skipped when match-aware conditioning is active).
+   */
+  endgameSolve?: boolean;
   /**
    * Condition the objective on `Observation.matchCtx` when present (2026-07-01): at a
    * declarer-at-A deal, 1-2/1-3 = match win (±3, equal), 1-4 = a strike (∓0.5), and defender wins
@@ -196,24 +207,35 @@ export function makeIsmctsBot(opts: IsmctsOptions = {}): Bot {
   const leanRollout = rolloutBot === heuristicBot || rolloutBot === runoutBot; // both ignore obs.outOfPlay
 
   /** Leaf for a given finish valuation (rebuilt per decision when match-aware — a cheap closure). */
-  const makeLeaf = (valueOf: ValueOf): LeafEvaluator =>
-    opts.leaf ??
-    (opts.rollout
-      ? // Rollout leaf fast-path: trusted apply (moves are legal by construction) + lean observe
-        // (skip the unused outOfPlay array) when the policy is the default heuristic. Pure; see
-        // docs/gotchas.md 2026-06-28. This is the champion's hot path, so it directly buys iterations.
-        (s, myTeam, rng) => {
-          let st = s;
-          while (!isTerminal(st)) {
-            const seat = st.toAct;
-            const obs = leanRollout
-              ? observe(st, seat, { includeOutOfPlay: false })
-              : observe(st, seat);
-            st = applyMoveTrusted(st, rolloutBot(obs, legalMoves(st, seat), rng));
+  const makeLeaf = (valueOf: ValueOf): LeafEvaluator => {
+    // Exact endgame finishing only under the STANDARD objective — the solver optimizes dealValue,
+    // so mixing it with a match-aware valueOf would solve for the wrong target.
+    const exactEnd = (opts.endgameSolve ?? false) && valueOf === dealValue;
+    return (
+      opts.leaf ??
+      (opts.rollout
+        ? // Rollout leaf fast-path: trusted apply (moves are legal by construction) + lean observe
+          // (skip the unused outOfPlay array) when the policy is the default heuristic. Pure; see
+          // docs/gotchas.md 2026-06-28. This is the champion's hot path, so it directly buys iterations.
+          (s, myTeam, rng) => {
+            let st = s;
+            while (!isTerminal(st)) {
+              if (exactEnd && cardsRemaining(st) <= 8) {
+                // Finish exactly: the solved value replaces the rollout's (misplayed) last plies.
+                const solved = solveEndgame(st, { maxNodes: 2000 });
+                if (solved) return myTeam === 0 ? solved.value : -solved.value;
+              }
+              const seat = st.toAct;
+              const obs = leanRollout
+                ? observe(st, seat, { includeOutOfPlay: false })
+                : observe(st, seat);
+              st = applyMoveTrusted(st, rolloutBot(obs, legalMoves(st, seat), rng));
+            }
+            return valueOf(result(st), myTeam);
           }
-          return valueOf(result(st), myTeam);
-        }
-      : (s, myTeam) => boundedStaticValue(s, myTeam));
+        : (s, myTeam) => boundedStaticValue(s, myTeam))
+    );
+  };
 
   const plainLeaf = makeLeaf(dealValue);
 
