@@ -3,8 +3,8 @@
 // exports the weights as JSON for the inference leaf.
 //
 // Usage:
-//   pnpm train [dataPath] [outWeights] [--epochs N] [--lr X]
-//   pnpm train data/value.bin data/value-weights.json --epochs 40
+//   pnpm train [dataPath] [outWeights] [--epochs N] [--lr X] [--hidden A,B]
+//   pnpm train data/value.bin data/value-weights.json --epochs 40 --hidden 128,64
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { makeRng } from "@guandan/engine";
@@ -20,6 +20,13 @@ const dataPath = positional[0] ?? "data/value.bin";
 const outPath = positional[1] ?? "data/value-weights.json";
 const epochs = opt("epochs", 40);
 const lr = opt("lr", 1e-3);
+// Hidden layer widths. Phase-1's [64,32] was deliberately tiny and underfit the v2 encoding
+// (ADR-0012 Stage 1 calls for a bigger net on the richer input); default is now wider.
+const hiddenIdx = argv.indexOf("--hidden");
+const hidden = (hiddenIdx !== -1 ? String(argv[hiddenIdx + 1]) : "128,64")
+  .split(",")
+  .map((s) => Number(s.trim()))
+  .filter((n) => Number.isFinite(n) && n > 0);
 
 const meta = JSON.parse(readFileSync(`${dataPath}.meta.json`, "utf8"));
 const inN: number = meta.featureSize;
@@ -69,12 +76,14 @@ const valRMSE = (): number => {
   return Math.sqrt(sse / Math.max(1, nVal));
 };
 
-const net = initMLP([inN, 64, 32, 1], makeRng(1));
+const net = initMLP([inN, ...hidden, 1], makeRng(1));
 net.mean = mean;
 net.std = std;
 net.labelScale = labelScale;
 
-console.log(`\nTraining on ${nTr} rows (val ${nVal}); ${inN} features; baseline val RMSE ${baseRMSE.toFixed(3)} (predict-mean)\n`);
+console.log(
+  `\nTraining [${net.sizes.join("→")}] on ${nTr} rows (val ${nVal}); baseline val RMSE ${baseRMSE.toFixed(3)} (predict-mean)\n`,
+);
 const t0 = Date.now();
 fit(net, Xs.subarray(0, nTr * inN), Yn.subarray(0, nTr), {
   epochs,
