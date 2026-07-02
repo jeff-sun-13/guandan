@@ -5,9 +5,18 @@ should run them on a **cloud CPU box**, not the dev machine (ADR-0009). The harn
 Node + tsx — it runs anywhere.
 
 ## ⚠️ Current live box (EPHEMERAL — verify/update/delete this block when the box changes)
-- **Host:** `178.156.158.230` — Hetzner Cloud, login `root` (key-based ssh), **8 vCPU**.
-- **State (as of 2026-06-28):** repo cloned at `~/guandan` (origin = github.com/jeff-sun-13/guandan,
-  PUBLIC), deps installed, `setup.sh` already run + tests green. Box clock is UTC (dev machine is CDT).
+- **Host:** `178.156.158.230` — Hetzner Cloud, login `root`, **RE-PROVISIONED 2026-07-01** (the
+  2026-06-28 box at the same IP was deleted; host key changed — clear stale `known_hosts` entries).
+- **SSH key:** the dev machine's `~/.ssh/id_ed25519.pub` must be in the box's
+  `/root/.ssh/authorized_keys` (a fresh box does NOT have it — add via the Hetzner web console).
+- **Bootstrap a fresh box in one command** (installs everything, then launches the experiment queue
+  detached — see `run-queue.sh`):
+  ```bash
+  ssh root@178.156.158.230 'apt-get update -qq && apt-get install -y -qq git tmux && \
+    { [ -d ~/guandan ] || git clone https://github.com/jeff-sun-13/guandan ~/guandan; } && \
+    cd ~/guandan && git pull && bash tools/remote/setup.sh && \
+    tmux new-session -d -s abq "bash tools/remote/run-queue.sh 2>&1 | tee ~/ab-queue.log"'
+  ```
 - **Billing:** it bills while it exists. When the campaign is idle, **delete the server in the Hetzner
   console** (or `hcloud server delete`) — stopping isn't enough to fully stop charges on some plans.
 - If this IP is dead, the box was deleted/recreated — provision a new one per "Workflow" below and
