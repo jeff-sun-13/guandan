@@ -40,10 +40,15 @@ bug. This session (all changes tested, 167 tests green):
      machine), the COMBINED challenger `ismcts-rollout-combo` (endgame+perType), Stage-1 gen-data +
      train ON the box, the `ismcts-learned` parity gate, and budget-curve probes (1200v600,
      1800v1200) on the paired harness.
+   - **Queue 3** (`tmux abq3`, log `~/ab-queue-3.log`, seeds 30001+, chains on QUEUE2_COMPLETE,
+     48 h fallback): tribute-lane + combo A/Bs extended to high n, then the EXPERT-ITERATION
+     dataset — 7 × `gen-search-data.ts` workers ≈ 21k champion self-play deals / ~3M decisions
+     with root visit stats → `~/search-data/part-*.jsonl` (~2.5 days). Total queued ≈ 4 days.
    - **FIRST ACTION NEXT SESSION — collect before anything else, then the human deletes the box:**
-     `ssh root@178.156.158.230 "cat ~/ab-queue.log ~/ab-queue-2.log"` and
-     `scp root@178.156.158.230:guandan/tools/data/value-weights.json tools/data/` (+ value-v3.bin
-     if re-training locally is undesirable). Then gate decisions per experiment at |z|≥3.
+     `ssh root@178.156.158.230 "cat ~/ab-queue.log ~/ab-queue-2.log ~/ab-queue-3.log"`,
+     `scp root@178.156.158.230:guandan/tools/data/value-weights.json tools/data/`, and the
+     search-data parts (large — consider processing/compressing on the box first). Then gate
+     decisions per experiment at |z|≥3.
    - Local partials before shutdown (superseded by box reruns): hist batch 1 = −0.095 pts/deal
      (z=−0.66, n=100, seeds 1..100 — POOLABLE with box seeds 20001+); local Stage-1 train reached
      epoch 1 val RMSE 1.571 (net [144,128,64,1]; predict-mean 2.414, linear 1.667).
