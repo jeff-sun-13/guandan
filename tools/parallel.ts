@@ -9,10 +9,11 @@ import { spawn } from "node:child_process";
 import { availableParallelism } from "node:os";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { poolResults, type H2HResult } from "@guandan/bots";
+import { poolResults, poolDealResults, type H2HResult, type DealEvalResult } from "@guandan/bots";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKER = join(HERE, "eval-worker.ts");
+const DEAL_WORKER = join(HERE, "evald-worker.ts");
 
 export interface ParallelOptions {
   matches?: number; // base matches (doubled when mirror is on). Default 100.
@@ -100,4 +101,78 @@ export async function runParallelEval(aName: string, bName: string, opts: Parall
   const chunks = chunkSeeds(matches, startSeed, jobs);
   const parts = await Promise.all(chunks.map((c) => runChunk(aName, bName, c, opts)));
   return poolResults(parts);
+}
+
+export interface ParallelDealOptions {
+  deals?: number; // paired deals. Default 200.
+  startSeed?: number; // first seed. Default 1.
+  levelMin?: number; // deal-level sample range (default 2..14 in the core).
+  levelMax?: number;
+  tributeProb?: number; // simulated tribute-context probability (default 0.8 in the core).
+  scoreBy?: "points" | "match"; // d metric (default "points"; "match" = dealValueCtx).
+  jobs?: number; // worker processes. Default = availableParallelism()-1.
+}
+
+/** Run one paired-deal worker chunk; resolve with its parsed DealEvalResult. */
+function runDealChunk(
+  aName: string,
+  bName: string,
+  chunk: { startSeed: number; count: number },
+  opts: ParallelDealOptions,
+): Promise<DealEvalResult> {
+  const args = [
+    "--import",
+    "tsx",
+    DEAL_WORKER,
+    `--a=${aName}`,
+    `--b=${bName}`,
+    `--start=${chunk.startSeed}`,
+    `--count=${chunk.count}`,
+  ];
+  if (opts.levelMin != null) args.push(`--levelMin=${opts.levelMin}`);
+  if (opts.levelMax != null) args.push(`--levelMax=${opts.levelMax}`);
+  if (opts.tributeProb != null) args.push(`--tributeProb=${opts.tributeProb}`);
+  if (opts.scoreBy != null) args.push(`--scoreBy=${opts.scoreBy}`);
+
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, args, { cwd: HERE });
+    let out = "";
+    let err = "";
+    child.stdout.on("data", (d) => (out += d));
+    child.stderr.on("data", (d) => (err += d));
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`evald worker exited ${code}\n${err}`));
+        return;
+      }
+      const line = out.trim().split("\n").filter(Boolean).pop();
+      if (!line) {
+        reject(new Error(`evald worker produced no output\n${err}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(line) as DealEvalResult);
+      } catch (e) {
+        reject(new Error(`evald worker output not JSON: ${line}\n${(e as Error).message}`));
+      }
+    });
+  });
+}
+
+/**
+ * Paired-deal evaluation fanned out across worker processes; pooled result is identical to a
+ * single-threaded run over the same seed range (poolDealResults — sums are additive).
+ */
+export async function runParallelDealEval(
+  aName: string,
+  bName: string,
+  opts: ParallelDealOptions = {},
+): Promise<DealEvalResult> {
+  const deals = opts.deals ?? 200;
+  const startSeed = opts.startSeed ?? 1;
+  const jobs = Math.max(1, Math.min(opts.jobs ?? defaultJobs(), deals));
+  const chunks = chunkSeeds(deals, startSeed, jobs);
+  const parts = await Promise.all(chunks.map((c) => runDealChunk(aName, bName, c, opts)));
+  return poolDealResults(parts);
 }

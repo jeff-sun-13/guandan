@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "eval": "tsx eval.ts",
+    "evald": "tsx evald.ts",
     "ladder": "tsx ladder.ts",
     "bench": "tsx bench.ts",
     "gen-data": "tsx gen-data.ts",

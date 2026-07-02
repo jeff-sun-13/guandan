@@ -7,6 +7,7 @@
     "dev": "pnpm --filter @guandan/web dev",
     "build": "pnpm --filter @guandan/web build",
     "eval": "pnpm --filter @guandan/tools eval",
+    "evald": "pnpm --filter @guandan/tools evald",
     "ladder": "pnpm --filter @guandan/tools ladder",
     "bench": "pnpm --filter @guandan/tools bench",
     "gen-data": "pnpm --filter @guandan/tools gen-data",

@@ -17,7 +17,8 @@ export { pimcBot, pimcStaticBot, makePimcBot, staticLeaf, type PimcOptions, type
 export { ismctsBot, makeIsmctsBot, type IsmctsOptions } from "./ismcts";
 export { makeLearnedLeaf } from "./learned-leaf";
 export { makeBeliefSampler, beliefSampler, currentTrickPassers, type Sampler, type BeliefOptions } from "./belief";
-export { staticDealValue, playsToEmpty, bombCount } from "./static-eval";
+export { staticDealValue, boundedStaticValue, playsToEmpty, bombCount } from "./static-eval";
+export { dealValue, dealValueCtx } from "./value";
 export { playMatch, type MatchOutcome } from "./arena";
 export {
   evaluateHeadToHead,
@@ -28,6 +29,13 @@ export {
   type H2HOptions,
   type H2HResult,
 } from "./eval";
+export {
+  evaluateDealsPaired,
+  poolDealResults,
+  formatDealReport,
+  type DealEvalOptions,
+  type DealEvalResult,
+} from "./eval-deal";
 export {
   fitBradleyTerry,
   formatLadder,
