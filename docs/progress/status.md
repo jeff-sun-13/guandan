@@ -14,13 +14,18 @@ configured) pulls the queue logs + live tmux pane tails + `value-weights.json` i
    branch you're on; ~30 s later a `box-sync: eval box logs` commit lands on that branch.
 2. `git pull`, then read `box-results/box-status.txt` (uptime/tmux/file listing + per-file
    pull results), `box-results/ab-queue*.log`, `box-results/pane-abq*.txt`.
-Verified 03:38 UTC: box up, load ~6.5/8, queue 1 mid-experiment (tribute A/B at 400/600
-deals, z=0.61), queues 2/3 waiting on their chain triggers as designed. NOTE: the ssh+cat
-fix to the workflow lives on `claude/guandan-mobile-port-sxmkta`; **main still has the
-silently-failing scp version — merge the branch** so the 6-hourly scheduled sync (which
-always runs main's copy) actually captures the logs. Large artifacts (the ~GB queue-3
-search-data parts) stay on the box — collect those over real SSH when the human is back,
-per the plan below.
+**WRITE path — `box-exec.yml`:** dispatch it with a `command` input (same MCP tool) and it
+runs the command on the box over SSH; read the output from the job log (`get_job_logs`).
+~10 s round-trip. Use it to requeue/kill experiments, `cd ~/guandan && git pull` fixes onto
+the box, restart tmux queues. Long jobs MUST be launched detached in tmux (job timeout
+15 min) — playbook in `tools/remote/README.md`. Note the box's `~/guandan` checkout is only
+updated when something pulls it: the queue-2 waiter does `git pull` before it starts, so
+fixes pushed to main before queue 1 completes ride into queues 2–3 automatically.
+Verified 03:47 UTC (both paths, human approved the main merge): box up, load ~6.5/8,
+queue 1 mid-experiment (tribute A/B at 400/600 deals, z=0.61), queues 2/3 waiting on their
+chain triggers as designed; box-exec wrote+read a file and tailed the live log. Large
+artifacts (the ~GB queue-3 search-data parts) stay on the box — collect those over real
+SSH when the human is back, per the plan below.
 
 ## ⚡ Current focus (2026-07-01) — post-audit correction pass: better instrument, real bugs fixed, key conclusions re-tested
 A full critical review of docs+code (human: "challenge previous agents' work") found the strategic

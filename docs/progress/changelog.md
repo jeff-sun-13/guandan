@@ -19,9 +19,14 @@ workflow + box access actually work from mobile. They do — with one platform r
 - **Round-trip verified end-to-end** (dispatch via GitHub MCP → box → commit → pull, ~30 s): box up,
   load ~6.5/8, **queue 1 mid-experiment** (tribute-lane A/B at 400/600 deals, edge +0.036, z=0.61),
   queues 2/3 tmux waiters idle **as designed** (they chain on QUEUE_COMPLETE markers).
-- **Left for the human:** merge `claude/guandan-mobile-port-sxmkta` into main so the 6-hourly
-  SCHEDULED sync (which always runs main's workflow copy) gets the ssh+cat fix.
-- Docs: status.md mobile-access section + collection instructions updated; gotchas entry added.
+- **box-exec.yml — the WRITE path** (human challenged "read-only defeats the purpose"; he's right):
+  `workflow_dispatch` with a `command` input runs any shell command on the box via the runner's SSH;
+  output comes back in the job log. Verified: wrote+read a file on the box, tailed the live queue
+  log, ~10 s round-trip. Cloud sessions can therefore requeue experiments, ship fixes onto the box
+  (`git pull`), and restart queues — full campaign steering from a phone. GitHub only registers
+  dispatchable workflows from the DEFAULT branch, so the human approved merging the branch → main
+  (both workflows live there now; the branch tracks main).
+- Docs: status.md mobile-access section (read+write paths) + collection instructions; gotchas entry.
 
 ---
 ## 2026-07-01 (evening) — Endgame exact solver; encoding v3; Hetzner box re-provisioned + remote queue; Stage-1 retrain started
