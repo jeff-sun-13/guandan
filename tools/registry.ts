@@ -148,6 +148,19 @@ export const REGISTRY: Record<string, NamedBot> = {
     name: "ismcts-rollout-endgame",
     bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief, endgameSolve: true }),
   },
+  // The combined challenger (2026-07-01 overnight): exact-endgame rollouts + per-type candidates
+  // together vs the plain champion config. If the singles A/Bs disagree with the combo, interactions
+  // matter — measure, don't assume additivity.
+  "ismcts-rollout-combo": {
+    name: "ismcts-rollout-combo",
+    bot: makeIsmctsBot({
+      iterations: 600,
+      rollout: true,
+      sampler: belief,
+      endgameSolve: true,
+      candidates: "perType",
+    }),
+  },
   // Match-aware objective A/B (2026-07-01, value.ts dealValueCtx): at declarer-at-A deals 1-2/1-3
   // both = match win, 1-4 = a strike — the standard +3/+2/+1 is wrong there. Differs from
   // -nohist ONLY in useMatchContext. Gate with `pnpm evald ... --level=14 --score=match`.
