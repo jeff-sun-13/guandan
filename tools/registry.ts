@@ -20,7 +20,7 @@ import {
   makeLearnedLeaf,
   type NamedBot,
 } from "@guandan/bots";
-import { mlpFromJSON } from "@guandan/nn";
+import { mlpFromJSON, FEATURE_SIZE } from "@guandan/nn";
 
 // Belief-conditioned determinization (bot v2 step 4) — shared by the -belief variants below.
 const belief = makeBeliefSampler();
@@ -171,15 +171,25 @@ export const REGISTRY: Record<string, NamedBot> = {
 // good, with rollout-class judgement. Train one with `pnpm gen-data` + `pnpm train`.
 const WEIGHTS = join(dirname(fileURLToPath(import.meta.url)), "data", "value-weights.json");
 if (existsSync(WEIGHTS)) {
-  const learnedLeaf = makeLearnedLeaf(mlpFromJSON(readFileSync(WEIGHTS, "utf8")));
-  REGISTRY["ismcts-learned"] = {
-    name: "ismcts-learned",
-    bot: makeIsmctsBot({ iterations: 600, sampler: belief, leaf: learnedLeaf }),
-  };
-  REGISTRY["pimc-learned"] = {
-    name: "pimc-learned",
-    bot: makePimcBot({ leaf: learnedLeaf, determinizations: 100, maxCandidates: 24, sampler: belief }),
-  };
+  const net = mlpFromJSON(readFileSync(WEIGHTS, "utf8"));
+  if (net.sizes[0] !== FEATURE_SIZE) {
+    // Stale net from an older encoding — registering it would score garbage silently (2026-07-01:
+    // the encoding moved to v3/144 features and old data was ALSO level-2-only; regenerate).
+    console.error(
+      `[registry] skipping learned bots: value-weights.json expects ${net.sizes[0]} features, ` +
+        `encoder now emits ${FEATURE_SIZE}. Regenerate: pnpm gen-data && pnpm train.`,
+    );
+  } else {
+    const learnedLeaf = makeLearnedLeaf(net);
+    REGISTRY["ismcts-learned"] = {
+      name: "ismcts-learned",
+      bot: makeIsmctsBot({ iterations: 600, sampler: belief, leaf: learnedLeaf }),
+    };
+    REGISTRY["pimc-learned"] = {
+      name: "pimc-learned",
+      bot: makePimcBot({ leaf: learnedLeaf, determinizations: 100, maxCandidates: 24, sampler: belief }),
+    };
+  }
 }
 
 /** Resolve a bot name to its NamedBot, or exit with a helpful message. */
