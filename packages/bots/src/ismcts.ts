@@ -195,8 +195,33 @@ export function candidatesAt(state: GameState, seat: Player, max: number, scheme
   return ordered;
 }
 
-/** Build an ISMCTS bot with the given knobs. `ismctsBot` (below) is the default configuration. */
-export function makeIsmctsBot(opts: IsmctsOptions = {}): Bot {
+/** One root action's search statistics — the policy-distillation target (expert iteration). */
+export interface IsmctsRootStat {
+  /** Public move signature (moveKey). */
+  key: string;
+  move: Move;
+  /** Times this action was selected at the root (the search's visit-count "policy"). */
+  selCount: number;
+  /** Mean backed-up value in [0,1] from our team's view. */
+  meanValue: number;
+}
+
+export interface IsmctsSearchResult {
+  /** The move the bot plays (robust child). */
+  move: Move;
+  /** Root statistics over the moves the search considered. Empty for a forced move. */
+  root: IsmctsRootStat[];
+}
+
+/**
+ * Build an ISMCTS searcher that exposes ROOT STATISTICS alongside the chosen move (2026-07-01).
+ * `makeIsmctsBot` is this with the stats dropped; tools (policy distillation for expert iteration,
+ * diagnostics) consume the full result. Extracting stats is side-effect-free — bot behavior is
+ * pinned byte-identical by test/ismcts-golden.test.ts.
+ */
+export function makeIsmctsSearcher(
+  opts: IsmctsOptions = {},
+): (obs: Observation, legal: Move[], rng: Rng) => IsmctsSearchResult {
   const iterations = opts.iterations ?? 1500;
   const c = opts.c ?? 1.4;
   const maxCandidates = opts.maxCandidates ?? 20;
@@ -239,9 +264,9 @@ export function makeIsmctsBot(opts: IsmctsOptions = {}): Bot {
 
   const plainLeaf = makeLeaf(dealValue);
 
-  return (obs: Observation, legal: Move[], rng: Rng): Move => {
+  return (obs: Observation, legal: Move[], rng: Rng): IsmctsSearchResult => {
     if (legal.length === 0) throw new Error("ismctsBot got no legal moves");
-    if (legal.length === 1) return legal[0] as Move; // forced
+    if (legal.length === 1) return { move: legal[0] as Move, root: [] }; // forced
 
     // Match-aware objective (value.ts): only when enabled AND the orchestrator supplied a context.
     const ctx = useMatchCtx ? obs.matchCtx : undefined;
@@ -269,8 +294,27 @@ export function makeIsmctsBot(opts: IsmctsOptions = {}): Bot {
       }
     }
     const chosen = bestKey != null ? rootMoves.get(bestKey) : undefined;
-    return chosen ?? (legal[0] as Move);
+
+    // Root stats for consumers (built AFTER the search — no rng touched, behavior unchanged).
+    const rootStats: IsmctsRootStat[] = [];
+    for (const [key, ch] of root.children) {
+      const move = rootMoves.get(key);
+      if (!move) continue; // tree key from a candidatesAt trim mismatch — not a root-legal move
+      rootStats.push({
+        key,
+        move,
+        selCount: ch.selCount,
+        meanValue: ch.selCount ? ch.reward / ch.selCount : 0,
+      });
+    }
+    return { move: chosen ?? (legal[0] as Move), root: rootStats };
   };
+}
+
+/** Build an ISMCTS bot with the given knobs. `ismctsBot` (below) is the default configuration. */
+export function makeIsmctsBot(opts: IsmctsOptions = {}): Bot {
+  const search = makeIsmctsSearcher(opts);
+  return (obs: Observation, legal: Move[], rng: Rng): Move => search(obs, legal, rng).move;
 }
 
 /** One ISMCTS iteration: determinize → select/expand → evaluate leaf → backpropagate. */

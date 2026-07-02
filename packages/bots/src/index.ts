@@ -14,7 +14,14 @@ export type Bot = (obs: Observation, legal: Move[], rng: Rng) => Move;
 export { randomBot } from "./random";
 export { heuristicBot, runoutBot, makeHeuristicBot, type HeuristicOptions } from "./heuristic";
 export { pimcBot, pimcStaticBot, makePimcBot, staticLeaf, type PimcOptions, type LeafEvaluator } from "./pimc";
-export { ismctsBot, makeIsmctsBot, type IsmctsOptions } from "./ismcts";
+export {
+  ismctsBot,
+  makeIsmctsBot,
+  makeIsmctsSearcher,
+  type IsmctsOptions,
+  type IsmctsSearchResult,
+  type IsmctsRootStat,
+} from "./ismcts";
 export { makeLearnedLeaf } from "./learned-leaf";
 export { makeBeliefSampler, beliefSampler, currentTrickPassers, type Sampler, type BeliefOptions } from "./belief";
 export { staticDealValue, boundedStaticValue, playsToEmpty, bombCount } from "./static-eval";
