@@ -4,6 +4,24 @@ Surprises, footguns, and hard-won lessons. Append liberally — a 30-second note
 future agent (or the human) an hour. Newest at top. Include the date.
 
 ---
+## 2026-07-02 — Claude cloud sessions CANNOT SSH anywhere; the GitHub Actions box-sync bridge is the way
+- Phone/web Claude Code sessions run in a sandbox whose ONLY egress is HTTP/HTTPS through a
+  TLS-re-terminating proxy: raw TCP (SSH port 22) is silently dropped, and CONNECT to the box's IP
+  gets 403 even on 443. **No environment network-policy setting fixes this** — it's the platform
+  design (docs: code.claude.com/docs/en/claude-code-on-the-web, "Security proxy"). Pasting the box's
+  private key into a cloud session is therefore useless for direct SSH (and never commit keys).
+- **The bridge that works:** GitHub Actions runners CAN ssh. `.github/workflows/box-sync.yml` +
+  the `BOX_SSH_KEY` repo secret pull box logs into `box-results/` on a 6 h schedule, and any session
+  can force a fresh sync via `workflow_dispatch` (GitHub MCP `actions_run_trigger`) then `git pull`.
+  Round-trip is ~30 s. Secrets are fine on a public repo (encrypted, masked, absent in fork PRs).
+- **`scp` on the ubuntu-latest runner failed SILENTLY while `ssh` worked** (first three syncs
+  committed only the status file; stderr was `2>/dev/null`'d so there was nothing to debug with).
+  Fixed by pulling files with `ssh $BOX "cat ~/file"` instead — no SFTP dependency — and recording
+  per-file success/failure IN the committed status file. Lesson: in unattended best-effort pipelines,
+  never discard stderr; commit it — it's the only debugger you'll have.
+- Corollary of the 2026-07-01 "queue logs LIE" gotcha: the sync also captures `tmux capture-pane`
+  tails per session, because the tee'd log lags the real experiment state (node buffers to pipes).
+
 ## 2026-07-01 — Value-scale contracts at evaluator seams: assert them, don't assume them
 - The ISMCTS leaf seam silently assumed values in [-3,3] (`(v+3)/6` normalisation) while the default
   static leaf returned ±15–60. TWO failure modes, both invisible: UCB exploration drowned (the

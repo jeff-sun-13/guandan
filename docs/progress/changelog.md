@@ -4,6 +4,26 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-02 — Mobile handoff verified: cloud session ↔ box round-trip works via the Actions bridge (direct SSH impossible)
+First phone-launched cloud session (human away, dev machine off). Goal: confirm the repo-as-memory
+workflow + box access actually work from mobile. They do — with one platform reality and one bug fix:
+- **Direct SSH from cloud sessions is IMPOSSIBLE, full stop** (new gotcha 2026-07-02): the sandbox
+  egress is HTTPS-only through a TLS-re-terminating proxy; port 22 is dropped and even CONNECT:443 to
+  the box's IP is policy-403'd. Tested empirically, confirmed against the platform docs. The pasted
+  box key is unusable in-session (it was kept in the ephemeral scratchpad only, never the repo).
+- **The 2026-07-01 box-sync Action is the right bridge and now actually works:** the first three runs
+  committed only `box-status.txt` because the runner's `scp` failed with stderr discarded. Rewrote the
+  pull step: `ssh+cat` per file (no SFTP dependency), per-file pull results recorded IN
+  `box-status.txt`, live `tmux capture-pane` tails per queue (the tee'd logs lag — node buffers
+  stdout to pipes), and `value-weights.json` pickup for when box training lands it.
+- **Round-trip verified end-to-end** (dispatch via GitHub MCP → box → commit → pull, ~30 s): box up,
+  load ~6.5/8, **queue 1 mid-experiment** (tribute-lane A/B at 400/600 deals, edge +0.036, z=0.61),
+  queues 2/3 tmux waiters idle **as designed** (they chain on QUEUE_COMPLETE markers).
+- **Left for the human:** merge `claude/guandan-mobile-port-sxmkta` into main so the 6-hourly
+  SCHEDULED sync (which always runs main's workflow copy) gets the ssh+cat fix.
+- Docs: status.md mobile-access section + collection instructions updated; gotchas entry added.
+
+---
 ## 2026-07-01 (evening) — Endgame exact solver; encoding v3; Hetzner box re-provisioned + remote queue; Stage-1 retrain started
 Continuation of the audit session (human: "do them all, keep going"). All committed + pushed.
 - **Endgame EXACT solver (`packages/bots/src/endgame.ts`).** Alpha-beta over the 2-team deal value on

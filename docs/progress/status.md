@@ -2,7 +2,25 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-01_
+_Last updated: 2026-07-02_
+
+## 📱 Mobile/cloud access to the box — VERIFIED WORKING (2026-07-02, phone cloud session)
+Direct SSH from Claude cloud sessions is **impossible** (HTTPS-only sandbox egress — see
+gotchas 2026-07-02; don't bother pasting the key into a session). The working path is the
+**GitHub Actions bridge**: `.github/workflows/box-sync.yml` (secret `BOX_SSH_KEY`, already
+configured) pulls the queue logs + live tmux pane tails + `value-weights.json` into
+`box-results/` every 6 h, and any session can force a fresh sync on demand:
+1. Trigger `box-sync.yml` via `workflow_dispatch` (GitHub MCP `actions_run_trigger`) on the
+   branch you're on; ~30 s later a `box-sync: eval box logs` commit lands on that branch.
+2. `git pull`, then read `box-results/box-status.txt` (uptime/tmux/file listing + per-file
+   pull results), `box-results/ab-queue*.log`, `box-results/pane-abq*.txt`.
+Verified 03:38 UTC: box up, load ~6.5/8, queue 1 mid-experiment (tribute A/B at 400/600
+deals, z=0.61), queues 2/3 waiting on their chain triggers as designed. NOTE: the ssh+cat
+fix to the workflow lives on `claude/guandan-mobile-port-sxmkta`; **main still has the
+silently-failing scp version — merge the branch** so the 6-hourly scheduled sync (which
+always runs main's copy) actually captures the logs. Large artifacts (the ~GB queue-3
+search-data parts) stay on the box — collect those over real SSH when the human is back,
+per the plan below.
 
 ## ⚡ Current focus (2026-07-01) — post-audit correction pass: better instrument, real bugs fixed, key conclusions re-tested
 A full critical review of docs+code (human: "challenge previous agents' work") found the strategic
@@ -44,7 +62,9 @@ bug. This session (all changes tested, 167 tests green):
      48 h fallback): tribute-lane + combo A/Bs extended to high n, then the EXPERT-ITERATION
      dataset — 7 × `gen-search-data.ts` workers ≈ 21k champion self-play deals / ~3M decisions
      with root visit stats → `~/search-data/part-*.jsonl` (~2.5 days). Total queued ≈ 4 days.
-   - **FIRST ACTION NEXT SESSION — collect before anything else, then the human deletes the box:**
+   - **FIRST ACTION NEXT SESSION — collect before anything else, then the human deletes the box.**
+     From a cloud session: trigger box-sync + `git pull` (see "Mobile/cloud access" above).
+     From a machine with real SSH:
      `ssh root@178.156.158.230 "cat ~/ab-queue.log ~/ab-queue-2.log ~/ab-queue-3.log"`,
      `scp root@178.156.158.230:guandan/tools/data/value-weights.json tools/data/`, and the
      search-data parts (large — consider processing/compressing on the box first). Then gate
