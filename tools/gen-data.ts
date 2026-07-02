@@ -21,13 +21,15 @@ import {
   observe,
   legalMoves,
   result,
+  planTribute,
+  shuffle,
   teamOf,
   nextInt,
   type GameState,
   type Player,
   type Rng,
 } from "@guandan/engine";
-import { heuristicBot } from "@guandan/bots";
+import { heuristicBot, applyTributePlan } from "@guandan/bots";
 import { encodeState, FEATURE_SIZE } from "@guandan/nn";
 
 /** Deal value from `team`'s view: +3/+2/+1 if our side won (by partner finishing 2nd/3rd/4th), else −. */
@@ -73,7 +75,17 @@ let rows = 0;
 const t0 = Date.now();
 for (let d = 0; d < deals; d++) {
   const rng = makeRng(seed + d);
-  let s = createDeal(2, rng, nextInt(rng, 4));
+  // BUG FIX (2026-07-01): this used to be createDeal(2, …) — the net only ever saw level 2, making
+  // every other level (the WILD CARD moves with the level!) out-of-distribution at eval time, and
+  // the constant level feature standardized to garbage. Sample levels 2..A like real matches reach,
+  // and give most deals a simulated tribute context (real deals after the first have one).
+  const level = 2 + nextInt(rng, 13);
+  let s = createDeal(level, rng, nextInt(rng, 4));
+  if (nextInt(rng, 5) < 4) {
+    // 80% of deals: simulate a previous finish + tribute exchange (mirrors eval-deal.ts setupDeal).
+    const prevFinish = shuffle(rng, [0, 1, 2, 3] as Player[]);
+    applyTributePlan(s, planTribute(prevFinish, s.hands, level), prevFinish, level);
+  }
   const snapshots: GameState[] = [];
   let guard = 0;
   while (!isTerminal(s)) {
