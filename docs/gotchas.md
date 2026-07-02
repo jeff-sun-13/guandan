@@ -4,6 +4,43 @@ Surprises, footguns, and hard-won lessons. Append liberally — a 30-second note
 future agent (or the human) an hour. Newest at top. Include the date.
 
 ---
+## 2026-07-01 — Value-scale contracts at evaluator seams: assert them, don't assume them
+- The ISMCTS leaf seam silently assumed values in [-3,3] (`(v+3)/6` normalisation) while the default
+  static leaf returned ±15–60. TWO failure modes, both invisible: UCB exploration drowned (the
+  reward range was ~10× the explore term) and non-terminal "good positions" outscored ACTUAL WINS
+  (+3 → q=1 vs static +40 → q≈7). It survived 5 days and contaminated every static-leaf ISMCTS
+  experiment because nothing crashes — the search just quietly mis-prioritises.
+- **Lessons:** (1) any pluggable evaluator seam needs its scale in the type's docstring AND a
+  contract test (`static-eval.test.ts` asserts leaf ∈ [-3,3] over sampled states — the learned leaf
+  gets the same guard for free); (2) when a search behaves "surprisingly weak but correct-looking",
+  check value scales FIRST — a diagnostic that only checks move legality/plausibility (like the
+  2026-06-26 one) cannot catch it. (3) The bug fix measured +0.125 pts/deal (z=2.28, n=600) — real,
+  but the "ISMCTS-static < PIMC-static" method result SURVIVED the fix (retested z=−6.2), so bugs
+  and method effects coexist: quantify each, don't let one explain away the other.
+
+## 2026-07-01 — Match-level A/Bs at n≤100 cannot see the effects that matter (use `pnpm evald`)
+- A match is ~6 deals of divergence compressed to ONE bit. At n=48–96 games the 95% CI is ±10–14pp —
+  and mature-engine improvements come in 1–3% steps that STACK. Three such "neutrals" in a row got
+  read as "hand-coded ceiling reached" (2026-06-30) when the honest statement was "each effect is
+  below instrument resolution". The paired-deal harness (ADR-0013) resolves what the match harness
+  never could: the SAME deal with seats swapped under common random numbers makes deal luck cancel
+  exactly — identical bots give d ≡ 0 with ZERO variance, and the known pimc-static gap that took
+  ~25 min to establish at match level shows z=4.37 in 7 seconds.
+- **Rule of thumb going forward:** treat any |z| < 3 sequential result as "keep running", never as
+  "no effect"; and before declaring a strategic pivot on null results, compute what effect size the
+  instrument could actually have seen.
+
+## 2026-07-01 — Long eval + live code edits don't mix (tsx workers load the CURRENT tree)
+- The `--auto` sequential eval spawns FRESH worker processes per batch, and `tsx` compiles whatever
+  is on disk at spawn time. Editing bot code while a multi-batch eval runs means later batches run
+  DIFFERENT code than earlier ones — pooled numbers quietly mix two behaviours. Had to kill/restart
+  a run for exactly this. **Rule: don't edit `packages/` while `tools/ab-queue.ps1` (or any
+  long eval) is running**; queue experiments first, then code, or run evals from a git worktree.
+- Also Windows-specific: `Add-Content` via a single long pipe holds an exclusive handle — the log is
+  unreadable until the process ends. Append per line (`| ForEach-Object { Add-Content … }`) so a
+  detached queue's log stays live-readable.
+
+---
 ## 2026-06-28 — Rollout cost is REDUNDANT WORK, not allocation (measured — overturns the CLAUDE.md "no allocations" premise)
 - Prototyped an allocation-free, fully in-place rollout core (`tools/fast-rollout-bench.ts`, kept for
   reference) to test the long-assumed hypothesis that per-ply `cloneState` allocation is what makes

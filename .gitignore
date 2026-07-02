@@ -15,3 +15,6 @@ tools/data/
 
 # Coverage / test output
 coverage/
+
+# detached A/B experiment queue output
+tools/ab-queue.log

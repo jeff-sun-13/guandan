@@ -109,13 +109,16 @@ MUST come back to it.** Full methodology + the open question + the likely learne
 **Ignores (the gaps):**
 1. **Per-player attribution of played cards** → no opponent depletion/void model. *The single largest
    blind spot.* (`outOfPlay` is a set; `PublicHistory` records passes+tribute but **not plays**.)
+   *(2026-07-01: plays are now RECORDED per seat (ADR-0014) — consumption beyond pin-tracking is
+   still open; the planned consumer is policy-likelihood belief, see status.md.)*
 2. Voids/shortages as *hard accumulated* constraints (only used as a weak soft reweight).
 3. Play-shape inference (what leading a single vs pair vs triple reveals).
 4. **Partner hand-modeling & signalling** (partner sampled like an opponent; can't read or send signals).
 5. **Endgame bomb management** beyond the single `opponentMinCount ≤ 4` threshold; no bomb sequencing,
    no go-out-bomb, no counting opponents' live bombs.
-6. Tribute **exact pinning** (the tributed card isn't pinned into the receiver's hand; the return card
-   isn't tracked at all) — exact, free info left on the table.
+6. Tribute **exact pinning** — ✅ **DONE 2026-07-01** (ADR-0014): tribute card pinned into the
+   receiver's sampled hand, return card into the giver's, resist pins/excludes the big jokers; pins
+   consumed as seen played. Gated A/B (`ismcts-rollout-trib`) in the experiment queue.
 7. Rollout opponents are a fixed weak heuristic; no mixed strategy.
 
 ---

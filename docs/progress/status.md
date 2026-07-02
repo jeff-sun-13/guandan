@@ -2,7 +2,49 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-06-30_
+_Last updated: 2026-07-01_
+
+## ⚡ Current focus (2026-07-01) — post-audit correction pass: better instrument, real bugs fixed, key conclusions re-tested
+A full critical review of docs+code (human: "challenge previous agents' work") found the strategic
+picture MOSTLY sound but resting on two bad legs — an underpowered instrument and a real value-scale
+bug. This session (all changes tested, 167 tests green):
+1. **NEW GATING INSTRUMENT — `pnpm evald` (ADR-0013), paired per-deal eval.** Same deal, seats
+   swapped, common random numbers → deal luck cancels exactly; detects in SECONDS what match-level
+   eval needed hours for (pimc-static gap: z=4.37 in 7 s). **All gating uses this now.** Sequential
+   mode `--auto` stops at |z|≥3. ⇒ **The "3 neutral results → hand-coded ceiling" conclusion is
+   DOWNGRADED** — those effects were below the old instrument's resolution (±10–14pp), not proven
+   zero. Hand-coded levers are back on the table, each cheap to test now.
+2. **Static-leaf ISMCTS value-scale BUG fixed** (`boundedStaticValue`, contract-tested): the leaf fed
+   ±15–60 into a normalisation assuming ±3 — UCB drowned + unfinished positions outscored real wins.
+   Fix measured **+0.125 pts/deal (z=2.28, n=600)**. Retest: **pimc-static STILL beats fixed
+   static-ISMCTS (z=−6.2)** → the "ISMCTS needs belief+rollout leaf" method lesson stands. All
+   pre-07-01 static-leaf ISMCTS numbers (incl. the 47.9% hist A/B) carry the contamination.
+3. **Objective fixed at level A** (`dealValueCtx` + `Observation.matchCtx`, ADR-0014): declarer 1-4
+   was valued "+1" but is a STRIKE; 1-2/1-3 both win the match. Opt-in (`useMatchContext`), gate via
+   `pnpm evald … --level=14 --score=match`. (DanZero already did this — danzero.md §2.)
+4. **Full public record now captured** (ADR-0014): plays attributed per seat (the #1 blind spot was
+   not even recorded before), tribute receiver + return card + resist. Belief lanes separated
+   (`usePassHistory`/`useTributeInfo`); constrained dealer does exact-card pinning (tribute→receiver,
+   return→giver, resist→big-joker pins/exclusions), pins consumed when seen played.
+5. **Candidate-cap bias fix available** (`candidates: "perType"`): the old cheapest-only cap pruned
+   ALL bombs + top singles at wide nodes (for us and in-tree opponents). GS2's per-type retention.
+6. **Learned-leaf pipeline bug found (not yet fixed): `gen-data.ts` trains ONLY at level 2** — every
+   other level (wild moves!) is out-of-distribution. Fix lands with the Stage-1 re-gen (+ encoding
+   gaps: trick topPlayer missing, straights invisible, wild-completed bombs uncounted).
+7. **⏳ Experiment queue running** (detached: `tools/ab-queue.ps1` → log `tools/ab-queue.log`):
+   hist-vs-nohist retest (fixed leaf + pins), perType A/B (static then champion config),
+   tribute-lane-alone on the champion. **Read the log before drawing any belief/candidate
+   conclusions.** Champion-config paired runs really want the Hetzner box back (down; re-provision
+   `tools/remote/setup.sh`).
+**Roadmap adjustment (from the review, human-approved "do them all"):** before the Stage-2 RL spend,
+run the cheap corrected-baseline levers (leaf/candidates/objective/tribute-pins via evald), then
+Stage 1 with the gen-data+encoding fixes (honest gate: PARITY at speed — the budget curve says extra
+iterations past the knee add ~nothing, so distillation is a speed win, not a strength win), then
+**expert iteration** (distill champion policy → use as ROLLOUT policy → knee moves right → re-distill)
+as the bridge to Stage 2, then **policy-likelihood belief** (Skat/GIB-style; the partner runs OUR
+EXACT policy → near-exact partner inference — the principled ADR-0011 revival). Endgame exact solver
++ designed pair-conventions as parallel tracks. Task list lives in the session tracker; details in
+changelog 2026-07-01.
 
 ## Milestone: **M1 complete (playable web app vs 3 heuristic bots). Prior-art documented. Repo now under git + pushed to GitHub (github.com/jeff-sun-13/guandan) and remote eval compute is LIVE (Hetzner box, ADR-0009). CHAMPION = `ismcts-rollout-huge` (1800 iters) by a hair, but the full budget-saturation curve (2026-06-29, overnight on Hetzner) shows **strength PLATEAUS ~1200–1800 iters** — Elo by budget: 150→1193, 300→1473, 600→1662, 1200→1842, 1800→1877; 3600 vs 1800 inconclusive (58%), 7200 vs 3600 no gain. **`1200` iters is the strength/latency SWEET SPOT** (tied with 1800, ~1s/move) → the ship target for live play. This REVISES the earlier "no plateau / compute-elastic" claim (that extrapolated from 150→600). **The search-budget lever is now TAPPED OUT** — next strength must come from history threading (ADR-0011), a better leaf, or the learned route (ADR-0010), NOT more iterations. Lineage: rollout-leaf ISMCTS beat `pimcStaticBot` ~82% (2026-06-26); the v2 thesis (search + belief + good leaf TOGETHER) is validated. Cost: ~0.6–2 s/move (fine for the strength-first campaign + for actual human play). Campaign: "maximize strength, long haul, final product only, do NOT wire into the app" (human, 2026-06-26). Instruments: parallel eval (`pnpm eval`) + Bradley-Terry ladder (`pnpm ladder`). External benchmark scoped (OpenGuanDan + DanZero), still needs the human's machine.**
 

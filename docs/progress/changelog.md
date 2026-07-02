@@ -4,6 +4,50 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-01 — Critical review of all docs+code found real bugs; new high-power paired-deal harness; objective + history fixes
+Full critical read-through of docs + a code audit (human asked to challenge prior agents' work), then
+built the fixes. Four real defects found and addressed:
+- **BUG (measured): static-leaf scale broke ISMCTS.** `ismcts.ts` normalises leaf values as `(v+3)/6`
+  assuming the ±3 deal scale, but `staticDealValue` returns ±15–60 → UCB exploration was drowned AND
+  unfinished positions outscored actual wins. **Fix:** `boundedStaticValue` = 3·tanh(raw/12) is now the
+  ISMCTS default leaf + a contract test (leaf ∈ [-3,3]). **A/B on the new paired harness: fix = +0.125
+  deal-pts/deal (z=2.28, n=600 paired deals)** — real but modest. **Retest of the old narrative:
+  `pimc-static` still beats fixed static-ISMCTS decisively (−0.66 pts/deal, z=−6.2)** → the 2026-06-26
+  "method result, not a bug" conclusion SURVIVES the fix (it was a bug AND a method result). All
+  pre-2026-07-01 static-leaf ISMCTS numbers carry this contamination (incl. the 47.9% hist A/B).
+- **BUG: training data only ever at level 2.** `gen-data.ts` hardcoded `createDeal(2, …)` — the net
+  never saw levels 3–A (the wild card MOVES with level), making every non-2 level out-of-distribution
+  at eval time. Likely a big part of Phase 1's finicky results. To fix in the Stage-1 re-gen (task).
+- **Structural: cheapest-only candidate cap prunes bombs/top cards** at wide (leading) nodes — for us
+  AND in-tree opponents (unmodelled interruptions; can't express "seize tempo"). Added a pluggable
+  `candidates: "perType"` scheme (GS2's top-k-per-type, `gs2.md` §6): every combo type keeps its
+  cheapest few + the top single. A/Bs queued (static + champion config).
+- **Objective wrong at level A:** the search valued a declarer 1-4 as "+1" when it's actually a STRIKE
+  (and 1-2 vs 1-3 both just win the match — the +3/+2 distinction vanishes). New `value.ts
+  dealValueCtx` (DanZero encodes the same correction, `danzero.md` §2) + `Observation.matchCtx`
+  threaded by the arena + `makeIsmctsBot({useMatchContext})`. Registered `ismcts-rollout-matchaware`;
+  gate with `pnpm evald … --level=14 --score=match`.
+- **NEW INSTRUMENT — `pnpm evald`, the paired per-deal harness** (`eval-deal.ts` + ADR-0013): same
+  deal played twice with lineups swapped under common random numbers → deal luck cancels EXACTLY
+  (A vs A gives d≡0), per-deal ±6-range paired samples instead of 1-bit matches. **Calibration: the
+  known pimc-static edge = z=4.37 in 7 seconds** (match harness needed ~25 min for barely-significant).
+  Samples levels 2..A + simulated tribute contexts + match contexts. `--auto` = sequential batches
+  until |z|≥3. **This resolves the power problem behind the "3 neutral results ⇒ ceiling" read — those
+  A/Bs (n=48–96, CI ±10–14pp) could not have seen the 1–3% effects that stack in mature engines.**
+- **Full public history (ADR-0011 upgrade):** the arena now records **plays attributed to seats**
+  (was passes-only — the gap analysis's #1 blind spot wasn't even being recorded), tribute
+  **receiver + return card**, and **cancelled tribute (resist)**. Belief lanes SEPARATED
+  (`usePassHistory` / `useTributeInfo`) so the harmful bundle can be dissected; the constrained
+  dealer now does **exact-card pinning** (tribute card → receiver, return card → giver, resist →
+  both big jokers pinned to a single resister / excluded from double-resist winners), pins consumed
+  as seen played. Tests for all pin behaviours.
+- **Experiment queue running** (detached, `tools/ab-queue.ps1` → `tools/ab-queue.log`): hist-vs-nohist
+  retest (fixed leaf + pins), perType A/Bs (static + rollout), tribute-lane-alone on the champion.
+- Also: consolidated `dealValue` into `value.ts`; `ismcts-rawleaf` kept as the bug's A/B control.
+  **167 tests green** (91 engine + 69 bots + 7 nn; was 136), all packages typecheck. Prior-art gap
+  noted for later: the Skat/GIB (policy-likelihood belief) literature — see the new plan tasks.
+
+---
 ## 2026-06-30 (pm) — Leaf v1 (run-out bomb trigger) = ~neutral; pattern: incremental tweaks aren't moving the champion
 - Built the first slice of the human's run-out framework: a rollout-policy bomb trigger that spends a
   bomb to seize tempo for a winning RUN when ≤3 plays from out (not just defensively). A/B:

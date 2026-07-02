@@ -3,6 +3,53 @@
 Append-only. Newest at top. Each entry: date, decision, why, alternatives, status.
 
 ---
+## ADR-0014 — Observations carry the FULL public record (attributed plays, tribute exchange, resist) + match context; objective may condition on it
+**Date:** 2026-07-01 · **Status:** Accepted (mechanism shipped; each consumer gated on ADR-0013 evals)
+**Context:** The 2026-07-01 code audit found the "public information layer" (ADR-0011) recorded only
+passes + `{giver, card}` — while its own gap analysis named **per-seat play attribution** the single
+largest blind spot. Exact free information was being dropped: the tribute **receiver** (the paid card
+is pinned in their hand), the **return card** (pinned in the giver's), and **cancelled tribute**
+(a single resist proves BOTH big jokers sit with the resister — the two strongest cards, located).
+Separately, bots optimized the flat +3/+2/+1 even at declarer-at-A deals where 1-4 is a STRIKE and
+1-2/1-3 both win the match (danzero.md §2 encodes the same correction).
+**Decision:** (a) `PublicHistory` gains `plays` (seat-attributed, exact cards), full `TributeEvent`
+(giver/receiver/card/returnCard), and `resist`; the arena + paired-deal harness populate them
+identically (shared helpers). (b) The belief sampler's two lanes are **separately switchable**
+(`usePassHistory` / `useTributeInfo`) so the previously-bundled "history hurts" result can be
+dissected; the constrained dealer does **exact-card pinning** with pins consumed as seen played.
+(c) `Observation.matchCtx` (levels/declarer/strikes — all public) is threaded by the arena;
+`value.ts dealValueCtx` conditions the deal objective at declarer-at-A deals, opt-in per bot
+(`useMatchContext`). Engine stays memoryless/pure — all population happens in the orchestrator.
+**Alternatives:** keep passes-only history (rejected: can't ever measure what isn't recorded);
+put the record in `GameState` (rejected: ADR-0002; also unnecessary — and note the ADR-0011 claim
+that a move-log makes cloning expensive is wrong for structurally-shared append-only logs, so cost
+was never the real argument).
+**Revisit:** default-on for any lane/objective only after a ≥3σ paired-deal win on the champion config.
+
+---
+## ADR-0013 — Gating instrument: paired per-deal eval (duplicate-style, CRN) replaces match-level A/Bs
+**Date:** 2026-07-01 · **Status:** Accepted (governs all bot-strength gating from here)
+**Context:** Every 2026-06-30 "neutral" result (belief/history/run-out) was measured on match-level
+binary outcomes at n=48–96 → 95% CIs ±10–14pp. Mature-engine improvements come in 1–3% increments
+(chess engine practice runs SPRT at tens of thousands of games). Reading those nulls as "hand-coded
+ceiling reached" was an instrument-resolution error — the same class of mistake we criticized in
+guandan.cards' evaluation.
+**Decision:** All bot A/Bs gate on **`pnpm evald`** (`eval-deal.ts`): the SAME seeded deal is played
+twice with lineups swapped under common random numbers; the per-deal value differential d = x − y is
+a paired sample (deal luck cancels EXACTLY — identical bots give d ≡ 0 with zero variance). Deals
+sample levels 2..A, simulated tribute contexts, and match contexts. Sequential runs stop at |z| ≥ 3
+(repeated peeking at 1.96 inflates false positives). Sums pool additively across worker processes.
+**Measured:** the known pimc-static>heuristic gap = z=4.37 in 7 s (the match harness needed ~25 min
+for a barely-significant read). The leaf-scale-bug fix (+0.125 pts/deal, z=2.28 @ n=600) is invisible
+at match-level n<1000 — exactly the effect size class we've been unable to see.
+**Alternatives:** (a) more match games — rejected: ~6 deals of divergence per 1-bit outcome wastes
+compute; (b) unpaired per-deal values — rejected: deal-luck variance dominates; pairing is the win.
+**Consequence:** the "3 neutral results ⇒ near ceiling" conclusion (2026-06-30) is DOWNGRADED to
+"effects < instrument resolution"; hand-coded levers are re-testable. Match-level eval stays for
+final confirmation of match-objective changes (e.g. A-level conditioning) where per-deal points
+undervalue the true objective (use `--score=match`).
+
+---
 ## ADR-0012 — Commit to the learned route (human go, 2026-06-30): staged — rich leaf first, then self-play RL for the info axis
 **Date:** 2026-06-30 · **Status:** **Accepted** (human committed after 3 neutral hand-coded results)
 **Context:** Search budget plateaued (~1200–1800 iters, 2026-06-29). Hand-coded belief/history was
