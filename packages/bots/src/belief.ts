@@ -47,11 +47,23 @@ export interface BeliefOptions {
   /** Softmax temperature on the implausibility penalty (0 = uniform, higher = stricter). Default 1.5. */
   lambda?: number;
   /**
-   * Use the full CROSS-TRICK pass history (`obs.history`, ADR-0011) when available. Default true.
-   * Set false to condition only on the CURRENT trick (the pre-history behaviour) — used to A/B the
-   * value of history threading.
+   * Legacy MASTER switch: when set, it is the default for BOTH granular lanes below. Default false
+   * (history conditioning measured neutral-to-harmful as one bundle, 2026-06-30 — the lanes are now
+   * separable precisely so we can find out WHICH part hurt).
    */
   useHistory?: boolean;
+  /**
+   * Lane 1 — SOFT cross-trick passing reweight over sampled worlds (Path A's suspect half: measured
+   * ~neutral alone, and reweighting 6 worlds is a weak vehicle). Default: `useHistory`.
+   */
+  usePassHistory?: boolean;
+  /**
+   * Lane 2 — HARD tribute/resist constraints via constructive dealing (the lane that measured a win
+   * in its ceiling-only form): giver rank ceilings + EXACT pins (2026-07-01) — the tribute card into
+   * the receiver's hand, the return card into the giver's, resist pins/excludes the big jokers.
+   * Pins are consumed as the pinned card is seen played (`history.plays`). Default: `useHistory`.
+   */
+  useTributeInfo?: boolean;
 }
 
 /**
@@ -80,8 +92,8 @@ export function currentTrickPassers(obs: Observation): Player[] {
  * internal simulated observation), fall back to the CURRENT trick only, derived from the snapshot —
  * so behaviour is unchanged where history isn't available.
  */
-function passConstraints(obs: Observation, useHistory: boolean): PassEvent[] {
-  if (useHistory && obs.history) return obs.history.passes;
+function passConstraints(obs: Observation, usePassHistory: boolean): PassEvent[] {
+  if (usePassHistory && obs.history) return obs.history.passes;
   const trick = obs.trick;
   if (!trick) return [];
   return currentTrickPassers(obs).map((seat) => ({
@@ -126,51 +138,106 @@ function penaltyOf(world: GameState, constraints: PassEvent[]): number {
   return penalty;
 }
 
+/** Count how many copies of card id `card` seat `s` has already played this deal (consumes pins). */
+function playedCount(obs: Observation, s: Player, card: Card): number {
+  const plays = obs.history?.plays;
+  if (!plays) return 0;
+  let n = 0;
+  for (const ev of plays) {
+    if (ev.seat !== s) continue;
+    for (const c of ev.cards) if (c === card) n++;
+  }
+  return n;
+}
+
 /**
- * Tribute-aware determinization (ADR-0011, Path A): like the engine's uniform `determinize`, but it
- * enforces the HARD deduction that a tribute giver paid their highest NON-WILD single, so they cannot
- * hold any non-wild card ranked ABOVE the card they gave (their "ceiling"). Uniform determinize is
- * blind to this and would wrongly deal a giver high cards (even jokers); forbidding that pushes the
- * strong cards onto the OTHER hidden hands — so the bot correctly believes the giver is weak at the
- * top (e.g. "they tributed below a joker ⇒ they hold no joker ⇒ my singles are safe"). Deals the
- * highest cards first (most constrained) weighted by remaining need; falls back to uniform
- * `determinize` if there's no tribute info or no feasible constrained deal is found.
+ * Tribute/resist-constrained determinization (ADR-0011 Path A, generalized 2026-07-01): like the
+ * engine's uniform `determinize`, but honoring every HARD deduction the tribute phase gives away:
+ *  - CEILING: a giver paid their highest NON-WILD single, so their dealt hand holds nothing
+ *    non-wild above it (jokers included — a non-joker tribute proves a jokerless giver).
+ *  - PINS (exact cards): the tribute card is IN the receiver's hand and the return card is IN the
+ *    giver's hand — until the pinned copy is seen played (`history.plays` consumes pins). Pinned
+ *    cards bypass the ceiling (the return card may legally out-rank the giver's tribute).
+ *  - RESIST: a "single" resist pins BOTH big jokers to the resister; a "double" resist proves the
+ *    previous winners hold NO big joker (excluded from their sampled hands).
+ * Deals pinned cards first, then the rest highest-first (most constrained) weighted by remaining
+ * need; falls back to uniform `determinize` when there is nothing to constrain or no feasible deal.
  */
 function determinizeWithTribute(obs: Observation, rng: Rng): GameState {
-  const tribute = obs.history?.tribute;
-  if (!tribute || tribute.length === 0) return determinize(obs, rng);
+  const h = obs.history;
+  if (!h || (h.tribute.length === 0 && !h.resist)) return determinize(obs, rng);
   const me = obs.player;
   const level = obs.level;
 
   // Per-seat ceiling on non-wild singleValue (givers only; `me` keeps its exact hand, never sampled).
   const ceiling = [Infinity, Infinity, Infinity, Infinity];
-  for (const t of tribute) {
+  for (const t of h.tribute) {
     if (t.giver === me) continue;
     ceiling[t.giver] = Math.min(ceiling[t.giver] as number, singleValue(t.card, level));
   }
-  if (ceiling.every((c) => c === Infinity)) return determinize(obs, rng); // only `me` paid — no constraint
+
+  // Exact pins: pinned[seat] = card ids that MUST be in that seat's sampled hand (multiset), each
+  // reduced by copies the seat has since played. Resist exclusions: seats that cannot hold a big joker.
+  const pinned: Card[][] = [[], [], [], []];
+  const pin = (seat: Player, card: Card, copies: number) => {
+    if (seat === me) return;
+    const remaining = copies - playedCount(obs, seat, card);
+    for (let k = 0; k < remaining; k++) (pinned[seat] as Card[]).push(card);
+  };
+  for (const t of h.tribute) {
+    pin(t.receiver, t.card, 1);
+    pin(t.giver, t.returnCard, 1);
+  }
+  const noBigJoker = [false, false, false, false];
+  if (h.resist) {
+    if (h.resist.kind === "single") {
+      pin(h.resist.holders[0] as Player, BIG_JOKER, 2);
+    } else {
+      for (let p = 0; p < 4; p++) {
+        if (!h.resist.holders.includes(p)) noBigJoker[p] = true;
+      }
+    }
+  }
+
+  const constrained =
+    ceiling.some((c) => c !== Infinity) || pinned.some((p) => p.length > 0) || noBigJoker.some(Boolean);
+  if (!constrained) return determinize(obs, rng); // only `me` was involved — nothing to constrain
 
   // Live-card pool — mirror of engine `determinize`: full deck (2 of each id) − my hand − out of play.
   const counts = new Array<number>(BIG_JOKER + 1).fill(2);
   for (const c of obs.hand) (counts[c] as number)--;
   for (const c of obs.outOfPlay) (counts[c] as number)--;
+
+  const need: number[] = [0, 0, 0, 0];
+  for (let p = 0; p < 4; p++) if (p !== me) need[p] = obs.handCounts[p] as number;
+
+  const hands: Card[][] = [[], [], [], []];
+  hands[me] = obs.hand.slice();
+
+  // 1. Place the pins (exempt from ceiling — see docstring). A pin that can't be honored (copy no
+  //    longer in the pool, or the seat is already full) is silently skipped: it was consumed by an
+  //    imprecisely-attributed play or the obs is mid-trick — never fabricate cards.
+  for (let p = 0; p < 4; p++) {
+    for (const card of pinned[p] as Card[]) {
+      if ((counts[card] as number) > 0 && (need[p] as number) > 0) {
+        (hands[p] as Card[]).push(card);
+        (counts[card] as number)--;
+        need[p] = (need[p] as number) - 1;
+      }
+    }
+  }
+
+  // 2. Deal the remaining pool, highest non-wild first (most constrained), weighted by need.
   const pool: Card[] = [];
   for (let id = 0; id <= BIG_JOKER; id++) {
     const n = counts[id] as number;
     if (n < 0) return determinize(obs, rng); // corrupt obs — let the engine path throw consistently
     for (let k = 0; k < n; k++) pool.push(id);
   }
-
-  const need: number[] = [0, 0, 0, 0];
-  for (let p = 0; p < 4; p++) if (p !== me) need[p] = obs.handCounts[p] as number;
-
-  // Highest non-wild cards first (most constrained), randomized within equal values.
   shuffle(rng, pool);
   const key = (c: Card) => (isWild(c, level) ? -1 : singleValue(c, level));
   pool.sort((a, b) => key(b) - key(a));
 
-  const hands: Card[][] = [[], [], [], []];
-  hands[me] = obs.hand.slice();
   for (const c of pool) {
     const wild = isWild(c, level);
     const cv = singleValue(c, level);
@@ -179,6 +246,7 @@ function determinizeWithTribute(obs: Observation, rng: Rng): GameState {
     for (let p = 0; p < 4; p++) {
       if (p === me || need[p] === 0) continue;
       if (!wild && cv > (ceiling[p] as number)) continue;
+      if (c === BIG_JOKER && noBigJoker[p]) continue;
       total += need[p] as number;
     }
     if (total === 0) return determinize(obs, rng); // no feasible placement — fall back to uniform
@@ -187,6 +255,7 @@ function determinizeWithTribute(obs: Observation, rng: Rng): GameState {
     for (let p = 0; p < 4; p++) {
       if (p === me || need[p] === 0) continue;
       if (!wild && cv > (ceiling[p] as number)) continue;
+      if (c === BIG_JOKER && noBigJoker[p]) continue;
       r -= need[p] as number;
       if (r < 0) {
         chosen = p;
@@ -208,38 +277,42 @@ function determinizeWithTribute(obs: Observation, rng: Rng): GameState {
   };
 }
 
-/** Base world sampler: tribute-constrained when tribute info is present, else plain uniform. */
-function baseDeterminize(obs: Observation, rng: Rng, useHistory: boolean): GameState {
-  if (useHistory && obs.history && obs.history.tribute.length > 0) {
+/** Base world sampler: tribute/resist-constrained when that info is present + enabled, else uniform. */
+function baseDeterminize(obs: Observation, rng: Rng, useTributeInfo: boolean): GameState {
+  if (useTributeInfo && obs.history && (obs.history.tribute.length > 0 || obs.history.resist)) {
     return determinizeWithTribute(obs, rng);
   }
   return determinize(obs, rng);
 }
 
 /**
- * Build a belief-conditioned sampler. Two layers of inference (ADR-0011): a HARD tribute ceiling baked
- * into the base determinization, then SOFT importance-weighting by cross-trick passing plausibility.
- * Falls back to plain uniform `determinize` when there's nothing to condition on, so it's never
- * worse-informed than uniform.
+ * Build a belief-conditioned sampler. Two SEPARABLE layers of inference (ADR-0011): HARD tribute/
+ * resist constraints baked into the base determinization (lane 2), then SOFT importance-weighting
+ * by passing plausibility (lane 1 — cross-trick when enabled, else current-trick only). Falls back
+ * to plain uniform `determinize` when there's nothing to condition on, so it's never worse-informed
+ * than uniform.
  */
 export function makeBeliefSampler(opts: BeliefOptions = {}): Sampler {
   const M = Math.max(1, opts.candidates ?? 6);
   const lambda = opts.lambda ?? 1.5;
-  // Default OFF: history conditioning (cross-trick passing + the greedy tribute-aware sampler) measured
-  // ~neutral-to-HARMFUL on the rollout champion (hist 33.3%, n=48, 2026-06-30). Likely a distributional
-  // bias in the greedy constrained deal, not a flaw in tribute-as-deduction. Kept opt-in for diagnosis.
-  const useHistory = opts.useHistory ?? false;
+  // Master default OFF: the BUNDLED history conditioning measured ~neutral-to-HARMFUL on the rollout
+  // champion (hist 33.3%, n=48, 2026-06-30 — but note that A/B ran on the then-broken unbounded
+  // static leaf for the 1200-iter pair, and bundled BOTH lanes). The lanes are now separable and
+  // individually gated on the paired-deal harness before any default flips.
+  const master = opts.useHistory ?? false;
+  const usePassHistory = opts.usePassHistory ?? master;
+  const useTributeInfo = opts.useTributeInfo ?? master;
 
   return (obs: Observation, rng: Rng): GameState => {
-    const constraints = passConstraints(obs, useHistory);
-    // No passing signal → still apply the hard tribute ceiling (if any) via the base sampler.
-    if (M === 1 || constraints.length === 0) return baseDeterminize(obs, rng, useHistory);
+    const constraints = passConstraints(obs, usePassHistory);
+    // No passing signal → still apply the hard tribute/resist constraints (if any) via the base sampler.
+    if (M === 1 || constraints.length === 0) return baseDeterminize(obs, rng, useTributeInfo);
 
     const worlds: GameState[] = [];
     const weights: number[] = [];
     let total = 0;
     for (let i = 0; i < M; i++) {
-      const w = baseDeterminize(obs, rng, useHistory);
+      const w = baseDeterminize(obs, rng, useTributeInfo);
       const wt = Math.exp(-lambda * penaltyOf(w, constraints));
       worlds.push(w);
       weights.push(wt);

@@ -95,6 +95,23 @@ export interface Observation {
    * so bots can do cross-trick inference + tribute-as-deduction. Bots must treat it as optional.
    */
   history?: PublicHistory;
+  /**
+   * Optional MATCH context (public: levels/strikes are open information). Like `history`, the
+   * single-deal engine leaves this UNDEFINED; the match runner fills it. Lets bots condition the
+   * deal objective on the match — decisive at level A, where a declarer 1-4 is a STRIKE, not a
+   * "+1 win", and 1-2 vs 1-3 both win the match outright (rules.md §7).
+   */
+  matchCtx?: MatchContext;
+}
+
+/** Public match situation for the deal being played (see Observation.matchCtx). */
+export interface MatchContext {
+  /** Current level of team 0 ({0,2}) and team 1 ({1,3}). */
+  levels: [number, number];
+  /** The team declaring this deal (whose level it's played at); -1 for the first deal of a match. */
+  declarer: number;
+  /** Failed declarer-at-A attempts per team (3rd strike demotes to level 2). */
+  aStrikes: [number, number];
 }
 
 /** One pass event in the public record: `seat` declined to beat `top` (held by `topPlayer`). */
@@ -104,20 +121,52 @@ export interface PassEvent {
   topPlayer: Player;
 }
 
-/** One tribute payment: `giver` paid `card` (by rule their highest single at the time). */
+/** One play event in the public record: `seat` faced everyone with `cards` (as `combo`). */
+export interface PlayEvent {
+  seat: Player;
+  cards: Card[];
+  combo: Combo;
+}
+
+/**
+ * One tribute payment (all four fields are public — both cards change hands face up, rules.md §8):
+ * `giver` paid `card` (by rule their highest non-wild single) to `receiver`, who gave `returnCard`
+ * back. Exact-information gold for belief: the giver holds nothing non-wild above `card`, the
+ * receiver is KNOWN to hold `card`, and the giver is KNOWN to hold `returnCard` — until each is
+ * seen played (track via `PublicHistory.plays`).
+ */
 export interface TributeEvent {
   giver: Player;
+  receiver: Player;
   card: Card;
+  returnCard: Card;
+}
+
+/**
+ * Tribute was resisted (抗贡, rules.md §8) — the highest-density free deduction in the game:
+ * - kind "single" (after a 1-3/1-4 finish): the last-place player refused by holding BOTH big
+ *   jokers → `holders` = [that seat], and both big-joker copies are pinned to them.
+ * - kind "double" (after a 1-2 finish): the two losers jointly hold both big jokers (one each, or
+ *   one holds both) → `holders` = the two losers; the WINNERS provably hold no big joker.
+ */
+export interface TributeResist {
+  kind: "single" | "double";
+  holders: Player[];
 }
 
 /**
  * The observable record of one deal — what the memoryless engine does NOT keep. Populated by the
  * match runner above the engine and attached to `Observation.history`. Enables the belief upgrades
- * in ADR-0011 (cross-trick passing inference, tribute-as-deduction). Pure serializable data.
+ * in ADR-0011 (per-seat play attribution, cross-trick passing inference, tribute-as-deduction).
+ * Pure serializable data.
  */
 export interface PublicHistory {
   /** Every pass so far this deal, with the top the passer faced. */
   passes: PassEvent[];
-  /** Tribute(s) paid before this deal began. */
+  /** Every play so far this deal, attributed to its seat (per-opponent modeling needs WHO, not just what). */
+  plays: PlayEvent[];
+  /** Tribute exchange(s) before this deal began (payment + return, both public). */
   tribute: TributeEvent[];
+  /** Present when tribute was cancelled by resist — pins/excludes big jokers (see TributeResist). */
+  resist?: TributeResist;
 }
