@@ -1,13 +1,25 @@
-synced: 2026-07-03 10:17:55 UTC
+synced: 2026-07-03 17:05:17 UTC
 Warning: Permanently added '178.156.158.230' (ED25519) to the list of known hosts.
- 10:17:56 up 1 day,  7:36,  2 users,  load average: 7.01, 7.02, 7.00
+ 17:05:19 up 1 day, 14:24,  2 users,  load average: 7.10, 7.05, 7.01
 
 abq3: 1 windows (created Thu Jul  2 03:07:03 2026)
 
 -rw-r--r-- 1 root root  7614 Jul  3 00:40 /root/ab-queue-2.log
--rw-r--r-- 1 root root  1736 Jul  3 08:54 /root/ab-queue-3.log
+-rw-r--r-- 1 root root  2535 Jul  3 15:54 /root/ab-queue-3.log
 -rw-r--r-- 1 root root  6842 Jul  2 14:43 /root/ab-queue.log
 -rw-r--r-- 1 root root 16235 Jul  2 02:46 /root/setup.log
+
+/root/search-data/:
+total 36
+drwxr-xr-x 2 root root 4096 Jul  3 15:54 .
+drwx------ 8 root root 4096 Jul  3 15:54 ..
+-rw-r--r-- 1 root root  274 Jul  3 16:59 part-0.log
+-rw-r--r-- 1 root root  274 Jul  3 16:58 part-1.log
+-rw-r--r-- 1 root root  274 Jul  3 17:01 part-2.log
+-rw-r--r-- 1 root root  274 Jul  3 17:00 part-3.log
+-rw-r--r-- 1 root root  274 Jul  3 16:56 part-4.log
+-rw-r--r-- 1 root root  274 Jul  3 16:57 part-5.log
+-rw-r--r-- 1 root root  321 Jul  3 17:03 part-6.log
 pulled ab-queue.log (6842 bytes)
 pulled ab-queue-2.log (7614 bytes)
-pulled ab-queue-3.log (1736 bytes)
+pulled ab-queue-3.log (2535 bytes)
