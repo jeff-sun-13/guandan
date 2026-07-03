@@ -1,20 +1,20 @@
+  [1000 deals] edge -0.0400 pts/deal, z=-0.92
+  [1200 deals] edge -0.0392 pts/deal, z=-0.99
+  [1400 deals] edge -0.0621 pts/deal, z=-1.71
+
+ismcts-rollout-combo  vs  ismcts-rollout-big   (paired deals — same deal, seats
+swapped, common random numbers)
+  paired deals: 1400   diverging (d≠0): 1064
+  edge (ismcts-rollout-combo): -0.0621 deal-value pts/deal  (SE 0.0364, z=-1.71)
+  d histogram: -6:29  -5:40  -4:133  -3:80  -2:121  -1:154  0:336  +1:151  +2:12
+2  +3:59  +4:105  +5:44  +6:26
+  → inconclusive so far (|z| < 1.96)
+
+(1400 paired deals = 2800 games in 44176.3s)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+===== [2026-07-03 15:54:51] search-data generation (7 workers × 3000 deals) ====
+=
+workers: 49791 49792 49793 49794 49795 49796 49797 — progress in ~/search-data/p
+art-*.log
 

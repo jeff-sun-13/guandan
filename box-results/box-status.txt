@@ -1,15 +1,25 @@
-synced: 2026-07-02 03:38:51 UTC
+synced: 2026-07-03 19:03:19 UTC
 Warning: Permanently added '178.156.158.230' (ED25519) to the list of known hosts.
- 03:38:52 up 57 min,  2 users,  load average: 6.70, 6.55, 6.43
+ 19:03:21 up 1 day, 16:22,  2 users,  load average: 7.20, 7.07, 7.04
 
-abq: 1 windows (created Thu Jul  2 02:46:45 2026)
-abq2: 1 windows (created Thu Jul  2 03:00:07 2026)
 abq3: 1 windows (created Thu Jul  2 03:07:03 2026)
 
--rw-r--r-- 1 root root   590 Jul  2 03:36 /root/ab-queue.log
+-rw-r--r-- 1 root root  7614 Jul  3 00:40 /root/ab-queue-2.log
+-rw-r--r-- 1 root root  2535 Jul  3 15:54 /root/ab-queue-3.log
+-rw-r--r-- 1 root root  6842 Jul  2 14:43 /root/ab-queue.log
 -rw-r--r-- 1 root root 16235 Jul  2 02:46 /root/setup.log
-pulled ab-queue.log (590 bytes)
-cat: /root/ab-queue-2.log: No such file or directory
-FAILED to pull ab-queue-2.log (see errors above)
-cat: /root/ab-queue-3.log: No such file or directory
-FAILED to pull ab-queue-3.log (see errors above)
+
+/root/search-data/:
+total 36
+drwxr-xr-x 2 root root 4096 Jul  3 15:54 .
+drwx------ 8 root root 4096 Jul  3 15:54 ..
+-rw-r--r-- 1 root root  791 Jul  3 18:57 part-0.log
+-rw-r--r-- 1 root root  791 Jul  3 18:53 part-1.log
+-rw-r--r-- 1 root root  791 Jul  3 19:01 part-2.log
+-rw-r--r-- 1 root root  791 Jul  3 18:57 part-3.log
+-rw-r--r-- 1 root root  791 Jul  3 18:53 part-4.log
+-rw-r--r-- 1 root root  791 Jul  3 18:52 part-5.log
+-rw-r--r-- 1 root root  838 Jul  3 18:58 part-6.log
+pulled ab-queue.log (6842 bytes)
+pulled ab-queue-2.log (7614 bytes)
+pulled ab-queue-3.log (2535 bytes)
