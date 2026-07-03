@@ -60,7 +60,7 @@ jobs:
           fi
           git config user.name "box-sync"
           git config user.email "actions@users.noreply.github.com"
-          git add box-results
+          git add -f box-results  # -f: the repo .gitignore excludes *.log, which is exactly what we sync
           if git diff --cached --quiet; then
             echo "no changes"
           else
