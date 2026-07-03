@@ -1,0 +1,132 @@
+
+===== [2026-07-02 02:46:45] tribute-lane (rollout 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-trib ismcts-rollout-nohist 100 --auto --max-deals=600 --seed=10001
+$ tsx evald.ts ismcts-rollout-trib ismcts-rollout-nohist 100 --auto --max-deals=600 --seed=10001
+
+Paired-deal eval: ismcts-rollout-trib vs ismcts-rollout-nohist — batch 100, seeds from 10001, sequential until |z|≥3 or 600 deals
+
+  [100 deals] edge +0.2300 pts/deal, z=1.84
+  [200 deals] edge +0.1625 pts/deal, z=1.92
+  [300 deals] edge +0.1400 pts/deal, z=2.01
+  [400 deals] edge +0.0362 pts/deal, z=0.61
+  [500 deals] edge +0.0410 pts/deal, z=0.78
+  [600 deals] edge +0.0333 pts/deal, z=0.71
+
+ismcts-rollout-trib  vs  ismcts-rollout-nohist   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 600   diverging (d≠0): 342
+  edge (ismcts-rollout-trib): +0.0333 deal-value pts/deal  (SE 0.0468, z=0.71)
+  d histogram: -6:6  -5:11  -4:37  -3:20  -2:46  -1:43  0:258  +1:54  +2:48  +3:16  +4:36  +5:18  +6:7
+  → inconclusive so far (|z| < 1.96)
+
+(600 paired deals = 1200 games in 4555.4s)
+
+
+===== [2026-07-02 04:02:42] pass-lane (rollout 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-pass ismcts-rollout-nohist 100 --auto --max-deals=600 --seed=10001
+$ tsx evald.ts ismcts-rollout-pass ismcts-rollout-nohist 100 --auto --max-deals=600 --seed=10001
+
+Paired-deal eval: ismcts-rollout-pass vs ismcts-rollout-nohist — batch 100, seeds from 10001, sequential until |z|≥3 or 600 deals
+
+  [100 deals] edge -0.1050 pts/deal, z=-0.85
+  [200 deals] edge -0.0200 pts/deal, z=-0.22
+  [300 deals] edge -0.0967 pts/deal, z=-1.28
+  [400 deals] edge -0.1325 pts/deal, z=-2.04
+  [500 deals] edge -0.0990 pts/deal, z=-1.68
+  [600 deals] edge -0.1133 pts/deal, z=-2.13
+
+ismcts-rollout-pass  vs  ismcts-rollout-nohist   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 600   diverging (d≠0): 439
+  edge (ismcts-rollout-pass): -0.1133 deal-value pts/deal  (SE 0.0532, z=-2.13)
+  d histogram: -6:9  -5:21  -4:54  -3:26  -2:59  -1:77  0:161  +1:61  +2:51  +3:16  +4:37  +5:15  +6:13
+  → ismcts-rollout-nohist likely stronger (z ≤ −1.96, single-look 95%; keep running if sequential)
+
+(600 paired deals = 1200 games in 6953.1s)
+
+
+===== [2026-07-02 05:58:36] pertype (rollout 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-pertype ismcts-rollout-big 100 --auto --max-deals=600 --seed=10001
+$ tsx evald.ts ismcts-rollout-pertype ismcts-rollout-big 100 --auto --max-deals=600 --seed=10001
+
+Paired-deal eval: ismcts-rollout-pertype vs ismcts-rollout-big — batch 100, seeds from 10001, sequential until |z|≥3 or 600 deals
+
+  [100 deals] edge -0.1200 pts/deal, z=-0.95
+  [200 deals] edge +0.0300 pts/deal, z=0.32
+  [300 deals] edge +0.0800 pts/deal, z=1.01
+  [400 deals] edge +0.0450 pts/deal, z=0.65
+  [500 deals] edge +0.0070 pts/deal, z=0.11
+  [600 deals] edge +0.0292 pts/deal, z=0.53
+
+ismcts-rollout-pertype  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 600   diverging (d≠0): 442
+  edge (ismcts-rollout-pertype): +0.0292 deal-value pts/deal  (SE 0.0553, z=0.53)
+  d histogram: -6:10  -5:17  -4:42  -3:30  -2:60  -1:64  0:158  +1:64  +2:51  +3:20  +4:44  +5:20  +6:20
+  → inconclusive so far (|z| < 1.96)
+
+(600 paired deals = 1200 games in 4416.9s)
+
+
+===== [2026-07-02 07:12:14] matchaware @A (rollout 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-matchaware ismcts-rollout-nohist 100 --auto --max-deals=600 --seed=10001 --level=14 --score=match
+$ tsx evald.ts ismcts-rollout-matchaware ismcts-rollout-nohist 100 --auto --max-deals=600 --seed=10001 --level=14 --score=match
+
+Paired-deal eval: ismcts-rollout-matchaware vs ismcts-rollout-nohist — batch 100, seeds from 10001, sequential until |z|≥3 or 600 deals, level pinned to 14
+
+  [100 deals] edge -0.0725 pts/deal, z=-0.45
+  [200 deals] edge -0.0494 pts/deal, z=-0.47
+  [300 deals] edge -0.0229 pts/deal, z=-0.27
+  [400 deals] edge -0.0497 pts/deal, z=-0.68
+  [500 deals] edge -0.0253 pts/deal, z=-0.38
+  [600 deals] edge -0.0483 pts/deal, z=-0.81
+
+ismcts-rollout-matchaware  vs  ismcts-rollout-nohist   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 600   diverging (d≠0): 375
+  edge (ismcts-rollout-matchaware): -0.0483 deal-value pts/deal  (SE 0.0593, z=-0.81)
+  d histogram: -6:28  -5.25:18  -4.5:41  -3.5:19  -2.5:12  -1.75:6  -1.5:13  -1:18  -0.75:31  0:225  +0.75:41  +1:18  +1.5:13  +1.75:13  +2.5:14  +3.5:23  +4.5:27  +5.25:15  +6:25
+  → inconclusive so far (|z| < 1.96)
+
+(600 paired deals = 1200 games in 4550.5s)
+
+
+===== [2026-07-02 08:28:06] matchaware default (no-regression) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-matchaware ismcts-rollout-nohist 100 --auto --max-deals=400 --seed=10001
+$ tsx evald.ts ismcts-rollout-matchaware ismcts-rollout-nohist 100 --auto --max-deals=400 --seed=10001
+
+Paired-deal eval: ismcts-rollout-matchaware vs ismcts-rollout-nohist — batch 100, seeds from 10001, sequential until |z|≥3 or 400 deals
+
+  [100 deals] edge -0.0200 pts/deal, z=-0.44
+  [200 deals] edge -0.0125 pts/deal, z=-0.54
+  [300 deals] edge +0.0050 pts/deal, z=0.26
+  [400 deals] edge +0.0138 pts/deal, z=0.78
+
+ismcts-rollout-matchaware  vs  ismcts-rollout-nohist   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 400   diverging (d≠0): 16
+  edge (ismcts-rollout-matchaware): +0.0138 deal-value pts/deal  (SE 0.0176, z=0.78)
+  d histogram: -5:1  -4:2  -2:2  -1:2  0:384  +1:3  +3:1  +4:2  +5:2  +6:1
+  → inconclusive so far (|z| < 1.96)
+
+(400 paired deals = 800 games in 2993.9s)
+
+
+===== [2026-07-02 09:18:01] exact-endgame leaf (rollout 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-endgame ismcts-rollout-big 100 --auto --max-deals=600 --seed=10001
+$ tsx evald.ts ismcts-rollout-endgame ismcts-rollout-big 100 --auto --max-deals=600 --seed=10001
+
+Paired-deal eval: ismcts-rollout-endgame vs ismcts-rollout-big — batch 100, seeds from 10001, sequential until |z|≥3 or 600 deals
+
+  [100 deals] edge +0.0300 pts/deal, z=0.21
+  [200 deals] edge +0.1175 pts/deal, z=1.21
+  [300 deals] edge +0.1217 pts/deal, z=1.57
+  [400 deals] edge +0.1313 pts/deal, z=1.93
+  [500 deals] edge +0.0910 pts/deal, z=1.53
+  [600 deals] edge +0.0725 pts/deal, z=1.32
+
+ismcts-rollout-endgame  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 600   diverging (d≠0): 462
+  edge (ismcts-rollout-endgame): +0.0725 deal-value pts/deal  (SE 0.0549, z=1.32)
+  d histogram: -6:10  -5:12  -4:48  -3:26  -2:58  -1:67  0:138  +1:75  +2:50  +3:24  +4:56  +5:27  +6:9
+  → inconclusive so far (|z| < 1.96)
+
+(600 paired deals = 1200 games in 19531.5s)
+
+
+QUEUE_COMPLETE

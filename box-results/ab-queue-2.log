@@ -1,0 +1,145 @@
+
+===== [2026-07-02 14:44:11] hist-vs-nohist retest (static 1200) =====
+$ pnpm --filter @guandan/tools evald ismcts-hist ismcts-nohist 100 --auto --max-deals=400 --seed=20001
+$ tsx evald.ts ismcts-hist ismcts-nohist 100 --auto --max-deals=400 --seed=20001
+
+Paired-deal eval: ismcts-hist vs ismcts-nohist — batch 100, seeds from 20001, sequential until |z|≥3 or 400 deals
+
+  [100 deals] edge -0.1200 pts/deal, z=-0.92
+  [200 deals] edge +0.0275 pts/deal, z=0.29
+  [300 deals] edge -0.0017 pts/deal, z=-0.02
+  [400 deals] edge +0.0000 pts/deal, z=0.00
+
+ismcts-hist  vs  ismcts-nohist   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 400   diverging (d≠0): 296
+  edge (ismcts-hist): +0.0000 deal-value pts/deal  (SE 0.0641, z=0.00)
+  d histogram: -6:10  -5:13  -4:17  -3:18  -2:40  -1:52  0:104  +1:43  +2:39  +3:20  +4:27  +5:12  +6:5
+  → inconclusive so far (|z| < 1.96)
+
+(400 paired deals = 800 games in 2194.1s)
+
+
+===== [2026-07-02 15:20:46] pertype-vs-cheapest (static 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-pertype ismcts-fast 150 --auto --max-deals=600 --seed=20001
+$ tsx evald.ts ismcts-pertype ismcts-fast 150 --auto --max-deals=600 --seed=20001
+
+Paired-deal eval: ismcts-pertype vs ismcts-fast — batch 150, seeds from 20001, sequential until |z|≥3 or 600 deals
+
+  [150 deals] edge -0.0867 pts/deal, z=-0.78
+  [300 deals] edge -0.0383 pts/deal, z=-0.50
+  [450 deals] edge -0.0578 pts/deal, z=-0.90
+  [600 deals] edge -0.0708 pts/deal, z=-1.29
+
+ismcts-pertype  vs  ismcts-fast   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 600   diverging (d≠0): 446
+  edge (ismcts-pertype): -0.0708 deal-value pts/deal  (SE 0.0550, z=-1.29)
+  d histogram: -6:14  -5:24  -4:50  -3:30  -2:39  -1:71  0:154  +1:75  +2:52  +3:27  +4:35  +5:16  +6:13
+  → inconclusive so far (|z| < 1.96)
+
+(600 paired deals = 1200 games in 346.2s)
+
+
+===== [2026-07-02 15:26:33] combo endgame+pertype (rollout 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-combo ismcts-rollout-big 100 --auto --max-deals=600 --seed=20001
+$ tsx evald.ts ismcts-rollout-combo ismcts-rollout-big 100 --auto --max-deals=600 --seed=20001
+
+Paired-deal eval: ismcts-rollout-combo vs ismcts-rollout-big — batch 100, seeds from 20001, sequential until |z|≥3 or 600 deals
+
+  [100 deals] edge -0.1550 pts/deal, z=-1.01
+  [200 deals] edge -0.0650 pts/deal, z=-0.60
+  [300 deals] edge -0.0300 pts/deal, z=-0.35
+  [400 deals] edge +0.0175 pts/deal, z=0.24
+  [500 deals] edge +0.0570 pts/deal, z=0.90
+  [600 deals] edge +0.0767 pts/deal, z=1.31
+
+ismcts-rollout-combo  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 600   diverging (d≠0): 450
+  edge (ismcts-rollout-combo): +0.0767 deal-value pts/deal  (SE 0.0585, z=1.31)
+  d histogram: -6:13  -5:17  -4:59  -3:24  -2:39  -1:59  0:150  +1:60  +2:54  +3:28  +4:58  +5:18  +6:21
+  → inconclusive so far (|z| < 1.96)
+
+(600 paired deals = 1200 games in 19563.2s)
+
+
+===== [2026-07-02 20:52:38] gen-data v3 (600k rows) =====
+$ pnpm --filter @guandan/tools gen-data 30000 10 data/value-v3.bin
+$ tsx gen-data.ts 30000 10 data/value-v3.bin
+  2000/30000 deals, 40000 rows…  4000/30000 deals, 80000 rows…  6000/30000 deals, 120000 rows…  8000/30000 deals, 160000 rows…  10000/30000 deals, 200000 rows…  12000/30000 deals, 240000 rows…  14000/30000 deals, 280000 rows…  16000/30000 deals, 320000 rows…  18000/30000 deals, 360000 rows…  20000/30000 deals, 400000 rows…  22000/30000 deals, 440000 rows…  24000/30000 deals, 480000 rows…  26000/30000 deals, 520000 rows…  28000/30000 deals, 560000 rows…  30000/30000 deals, 600000 rows…
+Wrote 600000 rows (144 features + 1 label) → data/value-v3.bin  [348.0 MB, 33.8s, 889 deals/s]
+
+===== [2026-07-02 20:53:13] train value net [144,128,64,1] =====
+$ pnpm --filter @guandan/tools train data/value-v3.bin data/value-weights.json --epochs 30 --hidden 128,64
+$ tsx train.ts data/value-v3.bin data/value-weights.json --epochs 30 --hidden 128,64
+
+Training [144→128→64→1] on 540000 rows (val 60000); baseline val RMSE 2.414 (predict-mean)
+
+  epoch 1/30  val RMSE 1.571
+  epoch 5/30  val RMSE 1.548
+  epoch 10/30  val RMSE 1.575
+  epoch 15/30  val RMSE 1.592
+  epoch 20/30  val RMSE 1.599
+  epoch 25/30  val RMSE 1.601
+  epoch 30/30  val RMSE 1.618
+
+Done in 841.0s. Final val RMSE 1.618 vs baseline 2.414 → data/value-weights.json
+
+===== [2026-07-02 21:07:19] ismcts-learned gate (vs rollout 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-learned ismcts-rollout-big 100 --auto --max-deals=600 --seed=20001
+$ tsx evald.ts ismcts-learned ismcts-rollout-big 100 --auto --max-deals=600 --seed=20001
+
+Paired-deal eval: ismcts-learned vs ismcts-rollout-big — batch 100, seeds from 20001, sequential until |z|≥3 or 600 deals
+
+  [100 deals] edge -0.3500 pts/deal, z=-2.51
+  [200 deals] edge -0.2425 pts/deal, z=-2.54
+  [300 deals] edge -0.2283 pts/deal, z=-2.97
+  [400 deals] edge -0.2650 pts/deal, z=-3.91
+
+ismcts-learned  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 400   diverging (d≠0): 307
+  edge (ismcts-learned): -0.2650 deal-value pts/deal  (SE 0.0677, z=-3.91)
+  d histogram: -6:14  -5:30  -4:27  -3:13  -2:43  -1:57  0:93  +1:36  +2:33  +3:15  +4:31  +5:7  +6:1
+  → ismcts-rollout-big is stronger (z ≤ −3 — safe even as a sequential stop)
+
+(400 paired deals = 800 games in 1864.9s)
+
+
+===== [2026-07-02 21:38:25] budget probe 1200 vs 600 =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-1200 ismcts-rollout-big 100 --auto --max-deals=600 --seed=20001
+$ tsx evald.ts ismcts-rollout-1200 ismcts-rollout-big 100 --auto --max-deals=600 --seed=20001
+
+Paired-deal eval: ismcts-rollout-1200 vs ismcts-rollout-big — batch 100, seeds from 20001, sequential until |z|≥3 or 600 deals
+
+  [100 deals] edge +0.0850 pts/deal, z=0.58
+  [200 deals] edge +0.1875 pts/deal, z=1.84
+  [300 deals] edge +0.2483 pts/deal, z=3.04
+
+ismcts-rollout-1200  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 300   diverging (d≠0): 228
+  edge (ismcts-rollout-1200): +0.2483 deal-value pts/deal  (SE 0.0816, z=3.04)
+  d histogram: -6:4  -5:12  -4:23  -3:6  -2:11  -1:34  0:72  +1:38  +2:31  +3:12  +4:32  +5:15  +6:10
+  → ismcts-rollout-1200 is stronger (z ≥ 3 — safe even as a sequential stop)
+
+(300 paired deals = 600 games in 3382.4s)
+
+
+===== [2026-07-02 22:34:49] budget probe 1800 vs 1200 =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-huge ismcts-rollout-1200 100 --auto --max-deals=400 --seed=20001
+$ tsx evald.ts ismcts-rollout-huge ismcts-rollout-1200 100 --auto --max-deals=400 --seed=20001
+
+Paired-deal eval: ismcts-rollout-huge vs ismcts-rollout-1200 — batch 100, seeds from 20001, sequential until |z|≥3 or 400 deals
+
+  [100 deals] edge +0.1350 pts/deal, z=0.97
+  [200 deals] edge +0.1650 pts/deal, z=1.75
+  [300 deals] edge +0.2150 pts/deal, z=2.82
+  [400 deals] edge +0.1713 pts/deal, z=2.59
+
+ismcts-rollout-huge  vs  ismcts-rollout-1200   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 400   diverging (d≠0): 305
+  edge (ismcts-rollout-huge): +0.1713 deal-value pts/deal  (SE 0.0661, z=2.59)
+  d histogram: -6:7  -5:8  -4:26  -3:13  -2:33  -1:44  0:95  +1:47  +2:45  +3:28  +4:28  +5:17  +6:9
+  → ismcts-rollout-huge likely stronger (z ≥ 1.96, single-look 95%; keep running if sequential)
+
+(400 paired deals = 800 games in 7548.3s)
+
+
+QUEUE2_COMPLETE
