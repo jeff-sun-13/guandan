@@ -4,6 +4,21 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-03 — First full collection over the bridge: queues 1+2 done. Learned leaf FAILS gate; budget "plateau" partly refuted
+Phone cloud session ("what is the current state"). Fixed the last sync bug — the repo `.gitignore`
+excludes `*.log`, so `git add box-results` silently skipped the very files the sync pulls; now
+`git add -f` (commit 2fb6436). Pulled complete queue-1/2/3 logs via box-exec. Results → status.md
+2026-07-03 section. Headlines: (1) `ismcts-learned` v3 leaf decisively fails vs the rollout champion
+(−0.265 pts/deal, z=−3.91) — Stage-1 distillation is NOT at parity; also found train.ts saves the
+last epoch, not the best (val RMSE 1.548@5 → 1.618@30). (2) The paired harness sees REAL budget
+gains 600→1200 (z=3.04) and likely 1200→1800 (z=2.59) — the match-level "plateau/tapped-out" story
+was at least partly instrument resolution, exactly the ADR-0013 lesson. (3) pass-lane hurts
+(z=−2.13, stays off); hist retest exact null; tribute-lane pooled +0.05 at z≈1.9 (suggestive, needs
+~5k deals); combo/perType/match-aware/endgame all individually below resolution. Queue 3's
+expert-iteration dataset generation is the only thing still running (7 workers, ETA ~07-04 13:00 UTC,
+disk fine). Box stays up until it finishes + data is collected.
+
+---
 ## 2026-07-02 — Mobile handoff verified: cloud session ↔ box round-trip works via the Actions bridge (direct SSH impossible)
 First phone-launched cloud session (human away, dev machine off). Goal: confirm the repo-as-memory
 workflow + box access actually work from mobile. They do — with one platform reality and one bug fix:

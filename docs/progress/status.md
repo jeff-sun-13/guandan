@@ -2,7 +2,33 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-02_
+_Last updated: 2026-07-03_
+
+## 📊 BOX RESULTS COLLECTED (2026-07-03, via the Actions bridge) — queues 1+2 COMPLETE, queue 3 finishing
+All numbers are paired-deal (`evald`) edges in pts/deal; gate = |z|≥3. Full logs: box-exec run
+28678915368 job log + `box-results/` once the next scheduled sync lands (gitignore fix 2fb6436).
+**Decisive results:**
+- **`ismcts-learned` (Stage-1 v3 leaf) FAILS the gate: −0.265, z=−3.91 @400** vs rollout champion.
+  Not close to parity. Train detail: val RMSE bottomed ~1.548 @epoch 5, drifted to 1.618 by 30 —
+  saved weights are the OVERFIT epoch-30 (no best-checkpoint in train.ts; fix before rerunning, but
+  the gap vs z=−3.91 is too big for that alone). Barely beats the LINEAR baseline (1.667).
+- **Budget on the paired harness: 1200 > 600 iters DECISIVE (+0.248, z=3.04 @300)**; 1800 vs 1200
+  = +0.171, z=2.59 @400 (hit max-deals; single-look significant). ⇒ **the "plateau at 1200–1800 /
+  budget lever tapped out" claim (match-level Elo) is at least partly an instrument artifact** —
+  gains persist to 1200 for sure and likely 1800. Ship-target latency tradeoff needs re-deciding.
+**Trending / null:**
+- pass-lane belief: −0.113, z=−2.13 @600 — hurts, consistent with 2026-06-30; stays OFF.
+- hist-vs-nohist retest (fixed leaf, static 1200): 0.0000, z=0.00 @400 — clean null.
+- tribute-lane: q1 +0.033 (z=0.71, 600) + q3 extended +0.059 (z=1.81, 1400) → pooled ≈ +0.05,
+  z≈1.9 over 2000 deals. Suggestive small positive, needs ~5000 total deals to resolve at z=3.
+- combo endgame+perType: q2 +0.077 (z=1.31) but q3 extended −0.062 (z=−1.71, 1400) → pooled ≈
+  −0.02, z≈−0.7. Neutral; the hoped stacking of the two levers did not materialize.
+- perType (rollout) +0.029 z=0.53; perType (static) −0.071 z=−1.29; match-aware @A −0.048 z=−0.81
+  (and no-regression at normal levels confirmed, only 16/400 deals diverge); exact-endgame leaf
+  +0.073 z=1.32 — all below resolution individually.
+**Queue 3 remaining:** expert-iteration dataset gen RUNNING since 15:54 UTC (7 workers × 3000
+deals, ~0.039 deals/s/worker → ETA ~2026-07-04 13:00 UTC). Disk 2% used, load 7.1/8 — healthy.
+`value-weights.json` (v3, epoch-30) synced into `box-results/`.
 
 ## 📱 Mobile/cloud access to the box — VERIFIED WORKING (2026-07-02, phone cloud session)
 Direct SSH from Claude cloud sessions is **impossible** (HTTPS-only sandbox egress — see
