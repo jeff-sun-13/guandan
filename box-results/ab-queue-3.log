@@ -47,3 +47,5 @@ ismcts-rollout-combo  vs  ismcts-rollout-big   (paired deals — same deal, seat
 
 ===== [2026-07-03 15:54:51] search-data generation (7 workers × 3000 deals) =====
 workers: 49791 49792 49793 49794 49795 49796 49797 — progress in ~/search-data/part-*.log
+
+QUEUE3_COMPLETE

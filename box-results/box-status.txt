@@ -1,25 +1,31 @@
-synced: 2026-07-04 09:10:30 UTC
+synced: 2026-07-04 15:49:08 UTC
 Warning: Permanently added '178.156.158.230' (ED25519) to the list of known hosts.
- 09:10:31 up 2 days,  6:29,  2 users,  load average: 7.10, 7.15, 7.10
+ 15:49:10 up 2 days, 13:08,  1 user,  load average: 0.00, 0.00, 0.00
 
-abq3: 1 windows (created Thu Jul  2 03:07:03 2026)
 
 -rw-r--r-- 1 root root  7614 Jul  3 00:40 /root/ab-queue-2.log
--rw-r--r-- 1 root root  2535 Jul  3 15:54 /root/ab-queue-3.log
+-rw-r--r-- 1 root root  2552 Jul  4 13:19 /root/ab-queue-3.log
 -rw-r--r-- 1 root root  6842 Jul  2 14:43 /root/ab-queue.log
 -rw-r--r-- 1 root root 16235 Jul  2 02:46 /root/setup.log
 
 /root/search-data/:
-total 64
-drwxr-xr-x 2 root root 4096 Jul  3 15:54 .
-drwx------ 8 root root 4096 Jul  3 15:54 ..
--rw-r--r-- 1 root root 4699 Jul  4 09:02 part-0.log
--rw-r--r-- 1 root root 4651 Jul  4 09:07 part-1.log
--rw-r--r-- 1 root root 4602 Jul  4 09:10 part-2.log
--rw-r--r-- 1 root root 4552 Jul  4 09:01 part-3.log
--rw-r--r-- 1 root root 4552 Jul  4 09:03 part-4.log
--rw-r--r-- 1 root root 4748 Jul  4 09:09 part-5.log
--rw-r--r-- 1 root root 4650 Jul  4 09:06 part-6.log
+total 7876252
+drwxr-xr-x 2 root root       4096 Jul  4 13:19 .
+drwx------ 8 root root       4096 Jul  3 15:54 ..
+-rw-r--r-- 1 root root 1149548671 Jul  4 12:55 part-0.jsonl
+-rw-r--r-- 1 root root       5860 Jul  4 12:55 part-0.log
+-rw-r--r-- 1 root root 1159122308 Jul  4 13:05 part-1.jsonl
+-rw-r--r-- 1 root root       5861 Jul  4 13:05 part-1.log
+-rw-r--r-- 1 root root 1157369377 Jul  4 13:19 part-2.jsonl
+-rw-r--r-- 1 root root       6073 Jul  4 13:19 part-2.log
+-rw-r--r-- 1 root root 1149234603 Jul  4 13:17 part-3.jsonl
+-rw-r--r-- 1 root root       5860 Jul  4 13:17 part-3.log
+-rw-r--r-- 1 root root 1151511477 Jul  4 13:19 part-4.jsonl
+-rw-r--r-- 1 root root       5860 Jul  4 13:19 part-4.log
+-rw-r--r-- 1 root root 1150129446 Jul  4 13:01 part-5.jsonl
+-rw-r--r-- 1 root root       5860 Jul  4 13:00 part-5.log
+-rw-r--r-- 1 root root 1148260851 Jul  4 13:09 part-6.jsonl
+-rw-r--r-- 1 root root       5860 Jul  4 13:09 part-6.log
 pulled ab-queue.log (6842 bytes)
 pulled ab-queue-2.log (7614 bytes)
-pulled ab-queue-3.log (2535 bytes)
+pulled ab-queue-3.log (2552 bytes)
