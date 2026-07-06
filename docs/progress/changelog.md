@@ -4,6 +4,30 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-06 — Box harvested (1.5M-decision dataset); expert-iteration round 1 built end-to-end
+Dev machine back after 5 days; box queues all COMPLETE (queue-3 finished 07-04).
+- **Harvested the box** over real SSH: the expert-iteration dataset — **21,000 champion self-play
+  deals / 1,497,804 decisions with root visit stats** → `tools/data/search-data/` (7.6 GB → 235 MB
+  gzip, integrity-verified). Box is delete-safe but still up; being reused for the round-1 gates.
+- **Expert iteration round 1 (task 8) — the full pipeline, one session:**
+  - `encode-policy.ts`: obs encoder (142 feats) over what ONE seat sees — first consumer of the
+    per-seat play-attribution history — + 30-feat action encoder.
+  - `policy.ts`: **two-tower net** (obs tower once/decision, tiny act tower per legal move, dot
+    score, softmax-CE on visit fractions). Hand-written Adam/backprop **certified by a
+    finite-difference gradient test**. The tower split is what makes a learned rollout policy
+    affordable in-search (~30 µs/decision instead of ~50× that).
+  - `prep-policy-data.ts`: streamed the dataset, reconstructed concrete moves from root keys via a
+    legalMoves probe — **374,438 decisions / 2.09 M actions, zero reconstruction misses** (0.9 min).
+    Documented round-1 bias: targets only cover search-considered moves (cheapest-cap trimmed).
+  - `train-policy.ts` with best-val checkpointing (train.ts retrofitted too — the value net had
+    shipped its overfit last epoch). Net [142→128→64→32]·[30→32→32], ~30 s/epoch local.
+  - `policy-bot.ts` + registry `policy` / `ismcts-rollout-net` — the apprentice standalone and as
+    the champion's rollout policy.
+- **Gates queued on the box:** (1) sanity — `policy` must crush `heuristic`; (2) the loop's real
+  test — `ismcts-rollout-net` vs `ismcts-rollout-big` (identical except apprentice rollouts).
+  If (2) wins: regenerate data with the stronger champion + perType candidates and go round 2.
+
+---
 ## 2026-07-03 — First full collection over the bridge: queues 1+2 done. Learned leaf FAILS gate; budget "plateau" partly refuted
 Phone cloud session ("what is the current state"). Fixed the last sync bug — the repo `.gitignore`
 excludes `*.log`, so `git add box-results` silently skipped the very files the sync pulls; now
