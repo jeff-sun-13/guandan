@@ -2,7 +2,23 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-03_
+_Last updated: 2026-07-06_
+
+## ✅ BOX FULLY HARVESTED (2026-07-06, dev machine back) — safe to delete the server
+Queue 3 finished 2026-07-04 (QUEUE3_COMPLETE). Collected over real SSH to the dev machine:
+- **Expert-iteration dataset: 21,000 champion self-play deals / 1,497,804 decisions with root
+  search stats** → `tools/data/search-data/part-{0..6}.jsonl.gz` (~235 MB, gzip -t verified,
+  gitignored). Worker logs alongside. This is task 8's training fuel.
+- Queue logs + `value-weights.json` were already in `box-results/` via the Actions bridge.
+**Nothing of value remains on the box** — the human can delete it in the Hetzner console
+(box-sync will then report "box unreachable", which is fine; consider disabling the schedule).
+**Next up (task 8, expert iteration):** obs/action encoder over the dataset → policy net →
+use as ROLLOUT policy → re-measure the knee. Also: retrain the value net from this dataset's
+outcome lines WITH best-checkpoint saving (train.ts saves the last epoch — the 2026-07-03
+collection showed epoch-30 overfit, val RMSE 1.618 vs 1.548 best; fix before any retrain).
+And re-decide the ship-target budget: 1200>600 was DECISIVE on the paired harness (+0.248,
+z=3.04) and 1800v1200 trends real (+0.171, z=2.59) — the old plateau was partly instrument
+artifact, so more per-move budget is again a live strength lever (at latency cost).
 
 ## 📊 BOX RESULTS COLLECTED (2026-07-03, via the Actions bridge) — queues 1+2 COMPLETE, queue 3 finishing
 All numbers are paired-deal (`evald`) edges in pts/deal; gate = |z|≥3. Full logs: box-exec run
