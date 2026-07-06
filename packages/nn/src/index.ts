@@ -11,3 +11,20 @@ export {
   mlpToJSON,
   mlpFromJSON,
 } from "./mlp";
+export { encodeObs, encodeAction, OBS_FEATURES, ACT_FEATURES } from "./encode-policy";
+export {
+  type PolicyNet,
+  type PolicyExample,
+  type PolicyFitOptions,
+  type PolicyGrads,
+  initPolicyNet,
+  initPolicyGrads,
+  accumulateExample,
+  fitPolicy,
+  policyScores,
+  softmaxScores,
+  policyCE,
+  policyToJSON,
+  policyFromJSON,
+  towerForward,
+} from "./policy";

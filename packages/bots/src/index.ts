@@ -23,6 +23,7 @@ export {
   type IsmctsRootStat,
 } from "./ismcts";
 export { makeLearnedLeaf } from "./learned-leaf";
+export { makePolicyBot } from "./policy-bot";
 export { makeBeliefSampler, beliefSampler, currentTrickPassers, type Sampler, type BeliefOptions } from "./belief";
 export { staticDealValue, boundedStaticValue, playsToEmpty, bombCount } from "./static-eval";
 export { dealValue, dealValueCtx } from "./value";

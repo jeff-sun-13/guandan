@@ -20,7 +20,8 @@ import {
   makeLearnedLeaf,
   type NamedBot,
 } from "@guandan/bots";
-import { mlpFromJSON, FEATURE_SIZE } from "@guandan/nn";
+import { mlpFromJSON, FEATURE_SIZE, policyFromJSON, OBS_FEATURES } from "@guandan/nn";
+import { makePolicyBot } from "@guandan/bots";
 
 // Belief-conditioned determinization (bot v2 step 4) — shared by the -belief variants below.
 const belief = makeBeliefSampler();
@@ -201,6 +202,28 @@ if (existsSync(WEIGHTS)) {
     REGISTRY["pimc-learned"] = {
       name: "pimc-learned",
       bot: makePimcBot({ leaf: learnedLeaf, determinizations: 100, maxCandidates: 24, sampler: belief }),
+    };
+  }
+}
+
+// Policy bots (expert iteration, task 8) — registered when trained weights exist.
+const POLICY_WEIGHTS = join(dirname(fileURLToPath(import.meta.url)), "data", "policy-weights.json");
+if (existsSync(POLICY_WEIGHTS)) {
+  const pnet = policyFromJSON(readFileSync(POLICY_WEIGHTS, "utf8"));
+  if (pnet.obs.sizes[0] !== OBS_FEATURES) {
+    console.error(
+      `[registry] skipping policy bots: policy-weights.json expects ${pnet.obs.sizes[0]} obs features, ` +
+        `encoder now emits ${OBS_FEATURES}. Re-run prep-policy-data + train-policy.`,
+    );
+  } else {
+    const policyBot = makePolicyBot(pnet);
+    // The raw apprentice — sanity gate: must crush `heuristic` (it distills a SEARCHED champion).
+    REGISTRY["policy"] = { name: "policy", bot: policyBot };
+    // THE expert-iteration challenger: champion config but rollouts played by the apprentice
+    // instead of the v1 heuristic. Gate vs ismcts-rollout-big (identical but for rolloutBot).
+    REGISTRY["ismcts-rollout-net"] = {
+      name: "ismcts-rollout-net",
+      bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief, rolloutBot: policyBot }),
     };
   }
 }

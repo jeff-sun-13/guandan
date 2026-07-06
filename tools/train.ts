@@ -85,18 +85,30 @@ console.log(
   `\nTraining [${net.sizes.join("→")}] on ${nTr} rows (val ${nVal}); baseline val RMSE ${baseRMSE.toFixed(3)} (predict-mean)\n`,
 );
 const t0 = Date.now();
+// BEST-CHECKPOINTING (2026-07-06): the 2026-07-03 box run saved the LAST epoch, which had drifted
+// to val RMSE 1.618 after bottoming at 1.548 around epoch 5 — classic overfit. Keep the weights
+// snapshot from the best validation epoch and export THAT.
+let bestVal = Infinity;
+let bestJSON = "";
+let bestEpoch = -1;
 fit(net, Xs.subarray(0, nTr * inN), Yn.subarray(0, nTr), {
   epochs,
   batchSize: 256,
   lr,
   rng: makeRng(2),
   onEpoch: (e) => {
-    if ((e + 1) % 5 === 0 || e === 0) console.log(`  epoch ${e + 1}/${epochs}  val RMSE ${valRMSE().toFixed(3)}`);
+    const v = valRMSE();
+    if (v < bestVal) {
+      bestVal = v;
+      bestJSON = mlpToJSON(net); // serialization IS the snapshot (deep copy)
+      bestEpoch = e + 1;
+    }
+    if ((e + 1) % 5 === 0 || e === 0) console.log(`  epoch ${e + 1}/${epochs}  val RMSE ${v.toFixed(3)}  (best ${bestVal.toFixed(3)} @${bestEpoch})`);
   },
 });
 
-writeFileSync(outPath, mlpToJSON(net));
+writeFileSync(outPath, bestJSON || mlpToJSON(net));
 console.log(
-  `\nDone in ${((Date.now() - t0) / 1000).toFixed(1)}s. Final val RMSE ${valRMSE().toFixed(3)} ` +
-    `vs baseline ${baseRMSE.toFixed(3)} → ${outPath}`,
+  `\nDone in ${((Date.now() - t0) / 1000).toFixed(1)}s. BEST val RMSE ${bestVal.toFixed(3)} @epoch ${bestEpoch} ` +
+    `(final ${valRMSE().toFixed(3)}, baseline ${baseRMSE.toFixed(3)}) → ${outPath} [best checkpoint]`,
 );
