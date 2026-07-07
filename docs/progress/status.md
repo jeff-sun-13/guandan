@@ -35,8 +35,9 @@ Queue 3 finished 2026-07-04 (QUEUE3_COMPLETE). Collected over real SSH to the de
   search stats** → `tools/data/search-data/part-{0..6}.jsonl.gz` (~235 MB, gzip -t verified,
   gitignored). Worker logs alongside. This is task 8's training fuel.
 - Queue logs + `value-weights.json` were already in `box-results/` via the Actions bridge.
-**Nothing of value remains on the box** — the human can delete it in the Hetzner console
-(box-sync will then report "box unreachable", which is fine; consider disabling the schedule).
+**Nothing of round-1-or-earlier value remains uncollected** — but the box is NOW RUNNING the
+expert-iteration round-1 pipeline (see the section above), so do NOT delete it until round 1's
+gates are read and `policy-weights.json` is synced (box-sync pulls it automatically).
 **Next up (task 8, expert iteration):** obs/action encoder over the dataset → policy net →
 use as ROLLOUT policy → re-measure the knee. Also: retrain the value net from this dataset's
 outcome lines WITH best-checkpoint saving (train.ts saves the last epoch — the 2026-07-03
@@ -159,20 +160,29 @@ as the bridge to Stage 2, then **policy-likelihood belief** (Skat/GIB-style; the
 EXACT policy → near-exact partner inference — the principled ADR-0011 revival). Endgame exact solver
 + designed pair-conventions as parallel tracks. Details in changelog 2026-07-01.
 
-**The 10-task plan (canonical copy — any session, any machine, work top-down):**
+**The 10-task plan (canonical copy — any session, any machine, work top-down; gate results
+2026-07-03 unless noted):**
 1. ✅ Paired per-deal eval harness (`pnpm evald`, ADR-0013).
-2. ✅ Static-leaf value-scale bug fix + leaf contract test.
-3. ◑ Re-run contaminated experiments (rawleaf A/B ✅ +0.125 z=2.28; ISMCTS-vs-PIMC ✅ stands z=−6.2;
-   hist retest RUNNING on the box, queue 2).
-4. ◑ Per-type candidate retention (code ✅ + golden-pinned; A/Bs on the box, queues 1–2).
-5. ✅ Full public history (plays/receiver/return/resist) + exact-card pins (gate: box queue 1).
-6. ◑ A-level match-aware objective (code ✅; gate: box queue 1 `--level=14 --score=match`).
-7. ◑ Stage-1 learned leaf: encoding v3 ✅, gen-data fix ✅; train + parity gate on the box (queue 2).
-8. ◔ Expert iteration: searcher stats exposed ✅, dataset generating on the box (queue 3);
-   NEXT = observation/action encoder + policy net + use-as-rollout + re-measure knee.
-9. Policy-likelihood belief with EXACT partner inference (needs task 8's policy net + recorded plays ✅).
-10. ◑ Endgame exact solver ✅ (oracle-verified; `endgameSolve` gate in box queue 1) + designed
-    pair conventions (needs the human's conventions — ask when he's back).
+2. ✅ Static-leaf value-scale bug fix (+0.125 z=2.28) + leaf contract test.
+3. ✅ Contaminated experiments re-run: ISMCTS-vs-PIMC method result stands (z=−6.2); hist retest
+   exact null; pass-lane HURTS (z=−2.13, stays off).
+4. ✅ Per-type candidates: built + golden-pinned, but gates NULL individually (rollout +0.029
+   z=0.53; static −0.071). Keep available; round-2 data-gen should use it (target-bias fix).
+5. ✅ Full public history + exact-card pins. Tribute lane suggestive +0.05 @z≈1.9 over 2000 deals
+   — resolving it needs ~5k deals (cheap box job whenever idle).
+6. ✅ A-level match-aware objective: built, gated null at pinned-A (−0.048 z=−0.81), no regression
+   at normal levels. Available via `useMatchContext`; rarely-triggering by construction.
+7. ✅ Stage-1 learned VALUE leaf: FAILED decisively (z=−3.91) after all fixes → ADR-0015 pivot.
+8. ▶ EXPERT ITERATION (ADR-0015) — ROUND 1 RUNNING ON THE BOX (tmux `round1`): dataset banked
+   (1.5M decisions), two-tower policy net + gates in flight. See the decision tree at the top.
+9. Policy-likelihood belief with EXACT partner inference (consumes task 8's policy net; plays ✅
+   recorded). THE principled ADR-0011 revival.
+10. ◑ Endgame exact solver ✅ built + oracle-verified; `endgameSolve` gate read +0.073 z=1.32
+    (below resolution — extend at high n alongside the tribute lane). Designed pair conventions
+    still need the human's conventions — ASK HIM.
+**Budget re-decision pending (2026-07-03 finding):** 1200>600 decisive, 1800≳1200 likely — the
+ship-target latency/strength tradeoff should be revisited with the human (1200 iters ≈ 1s/move
+was the old sweet spot; the curve extends further than believed).
 
 ## Milestone: **M1 complete (playable web app vs 3 heuristic bots). Prior-art documented. Repo now under git + pushed to GitHub (github.com/jeff-sun-13/guandan) and remote eval compute is LIVE (Hetzner box, ADR-0009). CHAMPION = `ismcts-rollout-huge` (1800 iters) by a hair, but the full budget-saturation curve (2026-06-29, overnight on Hetzner) shows **strength PLATEAUS ~1200–1800 iters** — Elo by budget: 150→1193, 300→1473, 600→1662, 1200→1842, 1800→1877; 3600 vs 1800 inconclusive (58%), 7200 vs 3600 no gain. **`1200` iters is the strength/latency SWEET SPOT** (tied with 1800, ~1s/move) → the ship target for live play. This REVISES the earlier "no plateau / compute-elastic" claim (that extrapolated from 150→600). **The search-budget lever is now TAPPED OUT** — next strength must come from history threading (ADR-0011), a better leaf, or the learned route (ADR-0010), NOT more iterations. Lineage: rollout-leaf ISMCTS beat `pimcStaticBot` ~82% (2026-06-26); the v2 thesis (search + belief + good leaf TOGETHER) is validated. Cost: ~0.6–2 s/move (fine for the strength-first campaign + for actual human play). Campaign: "maximize strength, long haul, final product only, do NOT wire into the app" (human, 2026-06-26). Instruments: parallel eval (`pnpm eval`) + Bradley-Terry ladder (`pnpm ladder`). External benchmark scoped (OpenGuanDan + DanZero), still needs the human's machine.**
 

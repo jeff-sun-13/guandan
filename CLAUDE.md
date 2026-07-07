@@ -45,8 +45,11 @@ If you are ever tempted to put rules logic inside a React component or a server 
   ONCE, at the end — do not wire bots into the app incrementally. Prefers agents keep going
   autonomously; stop only when genuinely blocked on him.
 
-## If you are a CLOUD session (desktop off — e.g. phone-launched, 2026-07-01→06)
-This repo is the full memory: read `docs/progress/status.md` FIRST — it has the live state, the
-Hetzner eval box (178.156.158.230, three chained tmux experiment queues), and the exact collect
-commands. The human carries the box's SSH private key on his phone and will paste it when asked.
-Never commit private keys (public repo).
+## Session orientation (any machine: desktop CLI, phone/cloud, box)
+This repo is the full memory: read `docs/progress/status.md` FIRST — it always leads with what is
+running where and what the next agent should do. Heavy compute belongs on the Hetzner eval box
+(178.156.158.230 while it lives — the live-box block in `tools/remote/README.md` is authoritative),
+NOT the dev machine (the human uses it for gaming; local eval loads have caused crashes for him).
+Cloud sessions cannot SSH (HTTPS-only sandbox) — use the GitHub Actions bridge instead:
+`box-sync.yml` reads results into `box-results/`, `box-exec.yml` runs commands on the box
+(playbook in status.md 2026-07-02 section). Never commit private keys (public repo).

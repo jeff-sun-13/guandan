@@ -3,6 +3,31 @@
 Append-only. Newest at top. Each entry: date, decision, why, alternatives, status.
 
 ---
+## ADR-0015 — Learned route runs through EXPERT ITERATION (policy from search stats), not value-leaf distillation
+**Date:** 2026-07-06 · **Status:** Accepted (round 1 running; each round gated per ADR-0013)
+**Context:** ADR-0012's Stage 1 (distill the rollout leaf's VALUE from game outcomes) was built,
+fixed twice (level-2-only data; encoding v3), retrained on clean data — and **decisively failed its
+gate** (`ismcts-learned` −0.265 pts/deal, z=−3.91 vs the champion; barely beats a linear model).
+Diagnosis: outcome-labeled value regression learns a blurry average of weak-heuristic play and loses
+exactly the tactical sharpness the search's leaf needs. Meanwhile the 2026-07-03 collection showed
+the budget curve is NOT tapped (1200>600 at z=3.04) — leaf fidelity is what moves the knee.
+**Decision:** Pursue the learned route as **expert iteration**: (a) log the champion's ROOT VISIT
+DISTRIBUTIONS during self-play (`gen-search-data.ts`; 21k deals / 1.5M decisions banked); (b) train
+a **two-tower policy net** (obs tower once per decision, tiny action tower per legal move, dot-score
+softmax on visit fractions — the split is what makes a learned policy affordable inside rollouts);
+(c) use it as the champion's ROLLOUT policy; (d) if gated stronger, regenerate data with the
+improved champion and repeat. Visit counts are a denser, sharper target than outcomes — the net
+imitates deliberation, not results — and the same net later powers policy-likelihood belief
+(exact partner inference) and any Stage-2 RL warm start.
+**Gates per round:** the apprentice alone must crush `heuristic` (sanity), and the net-rollout
+champion must beat the incumbent at fixed iterations (leaf quality first, wall-clock second).
+**Alternatives:** (a) keep iterating value-leaf distillation — rejected on the measured failure;
+(b) jump to Stage-2 self-play RL — still premature (expert iteration is the cheap on-ramp that
+reuses everything and produces its warm start). **Revisit:** if round-1 gates fail, diagnose per
+the decision tree in status.md before abandoning (known caveats: zero history features inside
+simulated rollouts; round-1 targets only cover search-considered moves).
+
+---
 ## ADR-0014 — Observations carry the FULL public record (attributed plays, tribute exchange, resist) + match context; objective may condition on it
 **Date:** 2026-07-01 · **Status:** Accepted (mechanism shipped; each consumer gated on ADR-0013 evals)
 **Context:** The 2026-07-01 code audit found the "public information layer" (ADR-0011) recorded only

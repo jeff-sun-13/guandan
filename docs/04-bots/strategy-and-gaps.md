@@ -1,5 +1,14 @@
 # Guandan strategy & our bot's gaps (2026-06-30)
 
+> **2026-07-06 addendum — read with the measured results.** The paired harness (ADR-0013) re-tested
+> this doc's priority list: the cheap hand-coded levers (Part 3 #1–#3) measured null-to-small
+> (tribute pins suggestive +0.05 @z≈1.9; run-out/perType/endgame-solve individually below
+> resolution; pass-history HURTS), value-leaf distillation failed decisively (z=−3.91, ADR-0015),
+> and the search-budget lever RE-OPENED (1200>600 at z=3.04 — the "tapped out" claim was partly
+> instrument artifact). The active route is now **expert iteration** (ADR-0015): the learned-policy
+> route this doc's Part 3 #4 pointed at, entered via search-stat distillation rather than RL.
+> Strategy content below (Parts 1–2, the run-out framework) remains the reference.
+
 Why this exists: after the search-budget curve plateaued (knee ~1200–1800 iters, changelog 2026-06-29)
 we started the information axis (history threading, ADR-0011) and got a *sobering, narrow* first result
 (cross-trick passing = no gain). To avoid drawing the wrong conclusion, we did first-principles thinking
