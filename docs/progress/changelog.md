@@ -4,6 +4,31 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-07 (evening) — Round 1b read off the box: Gate 2 still not unblocked, but both diagnoses helped
+Routine check-in ("check the overnight round 1b run, write it up"), read via box-sync (no SSH).
+`ROUND1B_COMPLETE` at 13:25 UTC; `box-results/round1b.log` + `policy-weights-nohist.json` (629 KB)
+synced 19:20 UTC.
+- **NOHIST training confirmed harmless:** best val CE 1.3854 @epoch 18 vs round-1 full net's 1.3860
+  @epoch 20 — history features carried ~no CE signal, as flagged pre-run.
+- **SANITY PASS:** `policy-nohist` vs `heuristic` +1.1617 pts/deal, z=15.25 @300 — even stronger
+  than round 1's full-net sanity (+0.988, z=12.98).
+- **GATE 2a FAIL** (temperature alone, round-1 net): −0.4250 pts/deal, z=−3.15 @100 — decisive
+  loss, but far smaller than round 1's −1.250/z=−8.64.
+- **GATE 2b INCONCLUSIVE** (nohist net + temperature): +0.0650 pts/deal, z=0.93 @400 (hit the
+  max-deals cap, never resolved). Trend across configs is monotone: z=−8.64 → −3.15 → +0.93 — both
+  fixes help, together they aren't (yet) proven to reach parity.
+- **Tribute-lane fill:** 3000 new deals, flat (edge −0.0002, z=−0.01). Pooled with the prior ~2000
+  deals (+0.05, z≈1.9) via inverse-variance weighting → **+0.0208 pts/deal, z≈1.22** — the earlier
+  suggestive positive faded toward null with more data; still inconclusive.
+- **Verdict:** neither Gate 2a nor 2b crossed ≥z+3 → decision-tree "both null/negative" branch, Gate
+  2 stays closed for round 2. Recommended next step before the invasive fix: extend Gate 2b alone
+  past its 400-deal cap (it was trending positive, not a sequential stop) — cheap way to find out if
+  more data resolves it before reaching for thread-simulated-history or the policy-likelihood-belief
+  fallback (task 9).
+- Box: `ROUND1B_COMPLETE`, all queues idle, load 0.02. Results fully collected in `box-results/` —
+  **box is delete-safe.**
+
+---
 ## 2026-07-06 (late) — Round-1 gates read off the box: distillation WORKS (Gate 1 z=12.98), apprentice-as-rollout FAILS (Gate 2 z=−8.64)
 Short session ("tell me the current state; I think the box finished"). It had: `ROUND1_COMPLETE`
 at 2026-07-07 00:18 UTC. Read the log over SSH, collected `~/round1.log` → `box-results/` and

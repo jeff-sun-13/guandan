@@ -2,24 +2,53 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-06 (round-1 gates read; ROUND 1b diagnosis launched overnight on the box)_
+_Last updated: 2026-07-07 evening (round 1b read via box-sync; box is delete-safe)_
 
-## ▶ RUNNING NOW — round 1b Gate-2 diagnosis on the box (`tmux round1b`, log `~/round1b.log`)
-Launched 2026-07-07 02:49 UTC (commit 5fa1986; script `tools/remote/run-round1b.sh`); training
-confirmed started. Sequence: train NOHIST net (history features zeroed, `--zero-history 1`) →
-sanity `policy-nohist` vs `heuristic` → **GATE 2a** `ismcts-rollout-net-t` (temperature-1 sampled
-rollouts, round-1 net) vs `ismcts-rollout-big` → **GATE 2b** `ismcts-rollout-net-nh-t` (nohist net
-+ T=1) vs `-big` → tribute-lane fill to ~5k pooled deals (seeds 42001+). Gates are fixed-600-iter
-quality tests, 100-deal batches, `--auto --max-deals=400`, seeds 41001+. ~2–4 h per 100 deals with
-net rollouts (smoke-measured 133 s/paired deal), so decisive results stop early; both-null worst
-case runs past tomorrow night — read whatever has finished. Results via box-sync (`round1b.log`
-is in its pull list) or SSH. Early tell: nohist epoch-1 val CE 1.3936 vs full net's 1.3941 — the
-history features carried little CE, consistent with the fallback design.
-**Decision tree tomorrow:** either gate ≥ z+3 → the loop unblocks: regenerate search data with the
-winning config (+ `candidates:"perType"`), retrain, re-gate = round 2; then weigh the ~10× rollout
-cost (wall-clock-fair budget check). Both null/negative → the apprentice-as-rollout idea is in real
-trouble; next suspects are threading simulated history through rollouts (invasive) or accepting the
-policy net's other role (policy-likelihood belief, task 9, which Gate 1 already justifies).
+## 🏁 ROUND 1B COMPLETE (read 2026-07-07 evening, via box-sync) — GATE 2 STILL NOT UNBLOCKED, but the negative narrowed hard
+Box pipeline finished 2026-07-07 13:25 UTC (`ROUND1B_COMPLETE`, commit 5fa1986, script
+`tools/remote/run-round1b.sh`); full log `box-results/round1b.log`, nohist weights in
+`box-results/policy-weights-nohist.json` (629 KB, also lands at `tools/data/policy-weights-nohist.json`
+on the box).
+- **NOHIST training:** best val CE **1.3854 @epoch 18** vs round-1 full net's 1.3860 @epoch 20 —
+  the history features carried essentially no CE signal, as the epoch-1 tell predicted; the nohist
+  net is not worse.
+- **SANITY (`policy-nohist` vs `heuristic`): PASS — +1.1617 pts/deal, z=15.25 @300.** The nohist
+  apprentice alone (no search) still crushes v1, even a touch stronger than round 1's full net
+  (+0.988, z=12.98). Confirms it's safe to read Gate 2b through this net.
+- **GATE 2a (`ismcts-rollout-net-t` vs `-big`, temperature alone, round-1 net): FAIL —
+  −0.4250 pts/deal, z=−3.15 @100 (sequential stop).** Sampling instead of argmax in rollouts does
+  NOT fix Gate 2 on its own — still a clear, decisive loss, though far smaller than round 1's
+  undiagnosed −1.250 pts/deal, z=−8.64.
+- **GATE 2b (`ismcts-rollout-net-nh-t` vs `-big`, nohist net + temperature): INCONCLUSIVE —
+  +0.0650 pts/deal, z=0.93 @400 (hit the 400-deal `max-deals` cap without resolving, never a
+  sequential stop).** Stacking both fixes moves the edge from strongly negative to
+  near-neutral/slightly positive — real progress — but doesn't cross |z|≥3 either way.
+  - The trend across all three rollout configs is monotone: round-1 net/argmax z=−8.64 →
+    net-t (temp only) z=−3.15 → net-nh-t (temp+nohist) z=+0.93. Each fix helps; neither alone nor
+    together yet proves parity with the heuristic-rollout champion.
+- **Tribute-lane fill (`ismcts-rollout-trib` vs `-nohist`): 3000 new deals (seeds 42001+), edge
+  −0.0002 pts/deal, z=−0.01 — flat.** Pooled with the prior ~2000 deals (+0.05 pts/deal, z≈1.9):
+  prior SE = edge/z = 0.05/1.9 = 0.0263; new batch SE = 0.0223 (from the log). Inverse-variance
+  pooling: weights w₁=1/0.0263²=1445, w₂=1/0.0223²=2011 → pooled edge = (1445×0.05 +
+  2011×(−0.0002))/(1445+2011) ≈ **+0.0208 pts/deal**, pooled SE = √(1/3456) ≈ 0.0170, **pooled
+  z ≈ 1.22**. (Cross-check via same-variance n-weighting gives +0.0199, z≈1.17 — consistent.)
+  **Verdict: still inconclusive, now leaning toward null** — the big new batch pulled the
+  suggestive positive from z≈1.9 down to z≈1.2. Would need several thousand more deals to resolve
+  either way; not worth prioritizing while Gate 2 is still open.
+**Decision-tree read:** per the tree recorded before this run, neither Gate 2a nor 2b reached
+≥ z+3, so this lands in the "both null/negative" branch — the apprentice-as-rollout idea is **not**
+unblocked yet. BUT Gate 2b's trend (decisively negative → near-zero/slightly positive as both
+fixes stack) is a real, useful signal, not a clean kill. **Recommended next step, before the
+invasive rewrite:** extend Gate 2b alone with a larger `max-deals` (it hit its 400-deal cap at
+z=0.93, it was never a sequential |z|≥3 stop) — if it resolves positive with more data, the loop
+unblocks cheaply; if it stays flat/negative out to ~1200–1600 deals, treat Gate 2 as closed under
+this approach and move to the two harder suspects already on record: (1) thread simulated history
+through rollout observations (invasive), or (2) drop apprentice-as-rollout and use the policy net
+for its other role (policy-likelihood belief, task 9 — already justified by Gate 1).
+**Box state:** `ROUND1B_COMPLETE` printed, all queues idle, load 0.02. Everything of value is
+collected in `box-results/` (`policy-weights-nohist.json`, `round1b.log`). **The box is
+DELETE-SAFE now** (same caveat as round 1: re-provisioning is ~10 min via `tools/remote/setup.sh`
+if the next session wants it for a Gate 2b extension run instead of spinning up fresh).
 
 ## 🏁 ROUND 1 COMPLETE (read 2026-07-06 over SSH) — GATE 1 PASSES, GATE 2 FAILS DECISIVELY
 Box pipeline finished 2026-07-07 00:18 UTC (`ROUND1_COMPLETE`); full log in
