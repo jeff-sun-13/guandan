@@ -1,0 +1,20 @@
+===== [2026-07-07 07:03:14] tribute-lane FILL (toward ~5k pooled) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-trib ismcts-rollout-nohist 2
+00 --auto --max-deals=3000 --seed=42001
+$ tsx evald.ts ismcts-rollout-trib ismcts-rollout-nohist 200 --auto --max-deals=
+3000 --seed=42001
+
+Paired-deal eval: ismcts-rollout-trib vs ismcts-rollout-nohist — batch 200, seed
+s from 42001, sequential until |z|≥3 or 3000 deals
+
+  [200 deals] edge +0.0400 pts/deal, z=0.50
+  [400 deals] edge -0.0625 pts/deal, z=-1.08
+  [600 deals] edge -0.0325 pts/deal, z=-0.68
+  [800 deals] edge -0.0500 pts/deal, z=-1.20
+  [1000 deals] edge -0.0295 pts/deal, z=-0.79
+  [1200 deals] edge -0.0342 pts/deal, z=-1.00
+  [1400 deals] edge -0.0236 pts/deal, z=-0.73
+  [1600 deals] edge -0.0322 pts/deal, z=-1.07
+  [1800 deals] edge -0.0225 pts/deal, z=-0.79
+  [2000 deals] edge -0.0165 pts/deal, z=-0.61
+

@@ -1,0 +1,100 @@
+
+===== [2026-07-07 02:49:32] train NOHIST policy net (--zero-history) =====
+
+Policy: obs[142→128→64→32] · act[30→32→32], 355717 train / 18721 val decisions; uniform-CE baseline 1.413 [NOHIST: history features zeroed]
+
+  epoch 1/20  train CE 1.4155  val CE 1.3936  top1 52.5%  (best 1.3936 @1)  [0.9m]
+  epoch 2/20  train CE 1.4042  val CE 1.3905  top1 55.9%  (best 1.3905 @2)  [1.7m]
+  epoch 3/20  train CE 1.4031  val CE 1.3893  top1 56.4%  (best 1.3893 @3)  [2.6m]
+  epoch 4/20  train CE 1.4024  val CE 1.3886  top1 56.4%  (best 1.3886 @4)  [3.5m]
+  epoch 5/20  train CE 1.4018  val CE 1.3882  top1 56.8%  (best 1.3882 @5)  [4.3m]
+  epoch 6/20  train CE 1.4014  val CE 1.3882  top1 56.6%  (best 1.3882 @6)  [5.2m]
+  epoch 7/20  train CE 1.4010  val CE 1.3877  top1 56.9%  (best 1.3877 @7)  [6.0m]
+  epoch 8/20  train CE 1.4006  val CE 1.3872  top1 57.1%  (best 1.3872 @8)  [6.9m]
+  epoch 9/20  train CE 1.4003  val CE 1.3870  top1 57.3%  (best 1.3870 @9)  [7.7m]
+  epoch 10/20  train CE 1.4000  val CE 1.3871  top1 57.4%  (best 1.3870 @9)  [8.6m]
+  epoch 11/20  train CE 1.3997  val CE 1.3871  top1 57.2%  (best 1.3870 @9)  [9.5m]
+  epoch 12/20  train CE 1.3995  val CE 1.3864  top1 57.5%  (best 1.3864 @12)  [10.3m]
+  epoch 13/20  train CE 1.3993  val CE 1.3867  top1 57.8%  (best 1.3864 @12)  [11.2m]
+  epoch 14/20  train CE 1.3991  val CE 1.3862  top1 57.8%  (best 1.3862 @14)  [12.0m]
+  epoch 15/20  train CE 1.3988  val CE 1.3857  top1 58.4%  (best 1.3857 @15)  [12.9m]
+  epoch 16/20  train CE 1.3987  val CE 1.3856  top1 58.5%  (best 1.3856 @16)  [13.7m]
+  epoch 17/20  train CE 1.3985  val CE 1.3860  top1 58.3%  (best 1.3856 @16)  [14.6m]
+  epoch 18/20  train CE 1.3984  val CE 1.3854  top1 58.5%  (best 1.3854 @18)  [15.4m]
+  epoch 19/20  train CE 1.3983  val CE 1.3855  top1 58.0%  (best 1.3854 @18)  [16.3m]
+  epoch 20/20  train CE 1.3982  val CE 1.3854  top1 58.6%  (best 1.3854 @18)  [17.1m]
+
+Saved BEST checkpoint (val CE 1.3854 @epoch 18) → data/policy-weights-nohist.json
+
+===== [2026-07-07 03:06:43] SANITY: policy-nohist vs heuristic =====
+$ pnpm --filter @guandan/tools evald policy-nohist heuristic 300 --auto --max-deals=900 --seed=41001
+$ tsx evald.ts policy-nohist heuristic 300 --auto --max-deals=900 --seed=41001
+
+Paired-deal eval: policy-nohist vs heuristic — batch 300, seeds from 41001, sequential until |z|≥3 or 900 deals
+
+  [300 deals] edge +1.1617 pts/deal, z=15.25
+
+policy-nohist  vs  heuristic   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 300   diverging (d≠0): 252
+  edge (policy-nohist): +1.1617 deal-value pts/deal  (SE 0.0762, z=15.25)
+  d histogram: -5:3  -4:4  -3:6  -2:12  -1:8  0:48  +1:41  +2:40  +3:7  +4:61  +5:28  +6:42
+  → policy-nohist is stronger (z ≥ 3 — safe even as a sequential stop)
+
+(300 paired deals = 600 games in 1.0s)
+
+
+===== [2026-07-07 03:06:45] GATE 2a: ismcts-rollout-net-t vs ismcts-rollout-big =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-net-t ismcts-rollout-big 100 --auto --max-deals=400 --seed=41001
+$ tsx evald.ts ismcts-rollout-net-t ismcts-rollout-big 100 --auto --max-deals=400 --seed=41001
+
+Paired-deal eval: ismcts-rollout-net-t vs ismcts-rollout-big — batch 100, seeds from 41001, sequential until |z|≥3 or 400 deals
+
+  [100 deals] edge -0.4250 pts/deal, z=-3.15
+
+ismcts-rollout-net-t  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 100   diverging (d≠0): 73
+  edge (ismcts-rollout-net-t): -0.4250 deal-value pts/deal  (SE 0.1351, z=-3.15)
+  d histogram: -6:5  -5:7  -4:8  -3:4  -2:17  -1:6  0:27  +1:9  +2:5  +3:4  +4:7  +5:1
+  → ismcts-rollout-big is stronger (z ≤ −3 — safe even as a sequential stop)
+
+(100 paired deals = 200 games in 3003.1s)
+
+
+===== [2026-07-07 03:56:49] GATE 2b: ismcts-rollout-net-nh-t vs ismcts-rollout-big =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-net-nh-t ismcts-rollout-big 100 --auto --max-deals=400 --seed=41001
+$ tsx evald.ts ismcts-rollout-net-nh-t ismcts-rollout-big 100 --auto --max-deals=400 --seed=41001
+
+Paired-deal eval: ismcts-rollout-net-nh-t vs ismcts-rollout-big — batch 100, seeds from 41001, sequential until |z|≥3 or 400 deals
+
+  [100 deals] edge +0.0300 pts/deal, z=0.20
+  [200 deals] edge +0.1300 pts/deal, z=1.27
+  [300 deals] edge +0.1200 pts/deal, z=1.48
+  [400 deals] edge +0.0650 pts/deal, z=0.93
+
+ismcts-rollout-net-nh-t  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 400   diverging (d≠0): 299
+  edge (ismcts-rollout-net-nh-t): +0.0650 deal-value pts/deal  (SE 0.0699, z=0.93)
+  d histogram: -6:9  -5:14  -4:25  -3:14  -2:42  -1:44  0:101  +1:36  +2:37  +3:19  +4:29  +5:17  +6:13
+  → inconclusive so far (|z| < 1.96)
+
+(400 paired deals = 800 games in 11183.0s)
+
+
+ROUND1B_GATES_DONE
+
+===== [2026-07-07 07:03:14] tribute-lane FILL (toward ~5k pooled) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-trib ismcts-rollout-nohist 200 --auto --max-deals=3000 --seed=42001
+$ tsx evald.ts ismcts-rollout-trib ismcts-rollout-nohist 200 --auto --max-deals=3000 --seed=42001
+
+Paired-deal eval: ismcts-rollout-trib vs ismcts-rollout-nohist — batch 200, seeds from 42001, sequential until |z|≥3 or 3000 deals
+
+  [200 deals] edge +0.0400 pts/deal, z=0.50
+  [400 deals] edge -0.0625 pts/deal, z=-1.08
+  [600 deals] edge -0.0325 pts/deal, z=-0.68
+  [800 deals] edge -0.0500 pts/deal, z=-1.20
+  [1000 deals] edge -0.0295 pts/deal, z=-0.79
+  [1200 deals] edge -0.0342 pts/deal, z=-1.00
+  [1400 deals] edge -0.0236 pts/deal, z=-0.73
+  [1600 deals] edge -0.0322 pts/deal, z=-1.07
+  [1800 deals] edge -0.0225 pts/deal, z=-0.79
+  [2000 deals] edge -0.0165 pts/deal, z=-0.61
