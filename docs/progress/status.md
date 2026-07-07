@@ -2,7 +2,24 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-06 (round-1 gates read; box IDLE and delete-safe)_
+_Last updated: 2026-07-06 (round-1 gates read; ROUND 1b diagnosis launched overnight on the box)_
+
+## ▶ RUNNING NOW — round 1b Gate-2 diagnosis on the box (`tmux round1b`, log `~/round1b.log`)
+Launched 2026-07-07 02:49 UTC (commit 5fa1986; script `tools/remote/run-round1b.sh`); training
+confirmed started. Sequence: train NOHIST net (history features zeroed, `--zero-history 1`) →
+sanity `policy-nohist` vs `heuristic` → **GATE 2a** `ismcts-rollout-net-t` (temperature-1 sampled
+rollouts, round-1 net) vs `ismcts-rollout-big` → **GATE 2b** `ismcts-rollout-net-nh-t` (nohist net
++ T=1) vs `-big` → tribute-lane fill to ~5k pooled deals (seeds 42001+). Gates are fixed-600-iter
+quality tests, 100-deal batches, `--auto --max-deals=400`, seeds 41001+. ~2–4 h per 100 deals with
+net rollouts (smoke-measured 133 s/paired deal), so decisive results stop early; both-null worst
+case runs past tomorrow night — read whatever has finished. Results via box-sync (`round1b.log`
+is in its pull list) or SSH. Early tell: nohist epoch-1 val CE 1.3936 vs full net's 1.3941 — the
+history features carried little CE, consistent with the fallback design.
+**Decision tree tomorrow:** either gate ≥ z+3 → the loop unblocks: regenerate search data with the
+winning config (+ `candidates:"perType"`), retrain, re-gate = round 2; then weigh the ~10× rollout
+cost (wall-clock-fair budget check). Both null/negative → the apprentice-as-rollout idea is in real
+trouble; next suspects are threading simulated history through rollouts (invasive) or accepting the
+policy net's other role (policy-likelihood belief, task 9, which Gate 1 already justifies).
 
 ## 🏁 ROUND 1 COMPLETE (read 2026-07-06 over SSH) — GATE 1 PASSES, GATE 2 FAILS DECISIVELY
 Box pipeline finished 2026-07-07 00:18 UTC (`ROUND1_COMPLETE`); full log in

@@ -17,8 +17,14 @@ at 2026-07-07 00:18 UTC. Read the log over SSH, collected `~/round1.log` → `bo
 - Status.md decision-tree branch taken: diagnose before round 2 — (a) history features are all
   zeros inside simulated rollouts (train/play distribution shift), (b) argmax rollouts kill
   diversity (try softmax sampling with temperature), (c) only then the 10× cost question.
-- **Box is idle (load 0.0) and fully delete-safe** — human can delete it in the Hetzner console;
-  re-provision is ~10 min when the diagnosis reruns are ready.
+- **Same session, round 1b launched overnight** (human going to bed; "run something autonomous"):
+  built both diagnosis levers in ~30 min — `makePolicyBot({temperature, zeroHistory})` (softmax-T
+  sampling; history-feature zeroing at inference), `train-policy --zero-history 1` (NOHIST net,
+  shared `OBS_HISTORY_RANGES` constant), registry variants `-net-t` / `-net-nh(-t)` /
+  `policy-nohist`, `run-round1b.sh` queue (nohist train → sanity → Gate 2a temp-only → Gate 2b
+  nohist+temp → tribute-lane fill to ~5k pooled), box-sync pulls `round1b.log` + nohist weights.
+  Typecheck + full test suite green; smoke-tested the -t bot on the box (1 paired deal, 133 s)
+  before launching `tmux round1b` at 02:49 UTC. Box stays up overnight after all.
 
 ---
 ## 2026-07-06 — Box harvested (1.5M-decision dataset); expert-iteration round 1 built end-to-end
