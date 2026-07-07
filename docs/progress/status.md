@@ -2,32 +2,35 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-06 (late)_
+_Last updated: 2026-07-06 (round-1 gates read; box IDLE and delete-safe)_
 
-## ▶ RUNNING NOW — expert-iteration ROUND 1 on the box (`tmux round1`, log `~/round1.log`)
-**⚠️ The dev machine is IN USE by the human (gaming) — run ALL compute on the box.** Local node
-processes were killed; the box rerun supersedes the interrupted local training.
-Pipeline (tools/remote/run-round1.sh, launched 2026-07-07 00:00 UTC): prep from the on-box raw
-dataset → train the two-tower policy net (best-val checkpoint) → **GATE 1** `policy` vs
-`heuristic` (sanity: the apprentice distills a SEARCHED champion — it must crush v1; if not, the
-distillation is broken, stop and diagnose) → **GATE 2** `ismcts-rollout-net` vs
-`ismcts-rollout-big` (identical champions except apprentice vs heuristic rollouts, fixed 600
-iters = leaf-QUALITY test). Results flow to `box-results/round1.log` via box-sync (6 h schedule,
-or dispatch it on demand — playbook in the 2026-07-02 section below).
-**Next agent's decision tree:**
-- GATE 1 fails → distillation bug (check encode-policy feature alignment train-vs-play, and that
-  rollout obs lacking `history` degrades gracefully — the played-counts block is zeros there).
-- GATE 1 passes + GATE 2 ≥ +z3 → **the loop closes**: regenerate search data with the improved
-  champion (net rollouts + `candidates:"perType"` to fix the round-1 target bias), retrain,
-  re-gate — round 2. Also re-measure the budget curve (better leaf moves the knee right).
-- GATE 2 null/negative → likely suspects: history-features are zero inside simulated rollouts
-  (distribution shift — consider threading simulated history), or the apprentice's argmax is too
-  deterministic for rollout diversity; also weigh the ~10× rollout cost (a wall-clock-fair
-  comparison would give the heuristic version more iterations — quality-per-iteration is the
-  right first question, cost second).
-Round-1 numbers from the local (killed) run for reference: epoch 1 already at val CE 1.394 /
-top-1 53.9% vs uniform 1.413. Full local prep stats: 374,438 decisions / 2.09 M actions / avg
-k=5.6 / zero move-reconstruction misses.
+## 🏁 ROUND 1 COMPLETE (read 2026-07-06 over SSH) — GATE 1 PASSES, GATE 2 FAILS DECISIVELY
+Box pipeline finished 2026-07-07 00:18 UTC (`ROUND1_COMPLETE`); full log in
+`box-results/round1.log`, weights collected to `tools/data/policy-weights.json` (627 KB).
+- **Training:** 355,717 train / 18,721 val decisions; best val CE **1.3860** @epoch 20 (still
+  improving at cutoff), top-1 57.5%. NOTE: uniform-CE baseline is 1.413 — the CE gain over
+  uniform is small (−0.027 nats) even though top-1 crushes uniform (~18% at avg k=5.6). The
+  visit-fraction targets are near-uniform on many decisions (search spreads visits), so CE is a
+  weak-looking metric; top-1 and Gate 1 are the meaningful reads.
+- **GATE 1 (sanity, `policy` vs `heuristic`): PASS — +0.988 pts/deal, z=12.98 @300.** The raw
+  apprentice (no search at play time) crushes v1. Distillation works end-to-end.
+- **GATE 2 (leaf quality, `ismcts-rollout-net` vs `ismcts-rollout-big`, fixed 600 iters):
+  FAIL — −1.250 pts/deal, z=−8.64 @100.** Apprentice rollouts make the champion much WORSE than
+  heuristic rollouts, and cost ~10× wall-clock (100 paired deals took 4,650 s vs seconds).
+**Per the decision tree, this is the "GATE 2 negative" branch — diagnose before round 2:**
+1. **Distribution shift / dead history features** — inside simulated rollouts the obs `history`
+   is absent, so the played-counts block is all zeros; the net trained on real histories. Test:
+   thread simulated history into rollout observations, or retrain with history features dropped,
+   and re-gate.
+2. **Rollout diversity** — the apprentice plays argmax (or near-argmax); deterministic rollouts
+   collapse the leaf-value variance ISMCTS needs. Test: sample from the softmax (temperature) in
+   rollouts, re-gate.
+3. Only after quality-per-iteration is fixed does the ~10× cost question matter (a
+   wall-clock-fair gate would give the heuristic version ~6000 iters).
+**Box state:** all queues done, tmux empty, load 0.0. **Everything is collected — the box is
+DELETE-SAFE now; the human should delete it in the Hetzner console to stop billing** (unless the
+next session wants it for the Gate-2 diagnosis reruns — re-provisioning is ~10 min via
+`tools/remote/setup.sh`, so holding it idle is optional).
 
 ## ✅ BOX FULLY HARVESTED (2026-07-06, dev machine back) — safe to delete the server
 Queue 3 finished 2026-07-04 (QUEUE3_COMPLETE). Collected over real SSH to the dev machine:
@@ -35,9 +38,9 @@ Queue 3 finished 2026-07-04 (QUEUE3_COMPLETE). Collected over real SSH to the de
   search stats** → `tools/data/search-data/part-{0..6}.jsonl.gz` (~235 MB, gzip -t verified,
   gitignored). Worker logs alongside. This is task 8's training fuel.
 - Queue logs + `value-weights.json` were already in `box-results/` via the Actions bridge.
-**Nothing of round-1-or-earlier value remains uncollected** — but the box is NOW RUNNING the
-expert-iteration round-1 pipeline (see the section above), so do NOT delete it until round 1's
-gates are read and `policy-weights.json` is synced (box-sync pulls it automatically).
+**Nothing of round-1-or-earlier value remains uncollected.** Round 1's gates have since been
+read and `policy-weights.json` + `round1.log` collected (see the section above) — the box is
+now fully delete-safe.
 **Next up (task 8, expert iteration):** obs/action encoder over the dataset → policy net →
 use as ROLLOUT policy → re-measure the knee. Also: retrain the value net from this dataset's
 outcome lines WITH best-checkpoint saving (train.ts saves the last epoch — the 2026-07-03
@@ -173,8 +176,10 @@ EXACT policy → near-exact partner inference — the principled ADR-0011 reviva
 6. ✅ A-level match-aware objective: built, gated null at pinned-A (−0.048 z=−0.81), no regression
    at normal levels. Available via `useMatchContext`; rarely-triggering by construction.
 7. ✅ Stage-1 learned VALUE leaf: FAILED decisively (z=−3.91) after all fixes → ADR-0015 pivot.
-8. ▶ EXPERT ITERATION (ADR-0015) — ROUND 1 RUNNING ON THE BOX (tmux `round1`): dataset banked
-   (1.5M decisions), two-tower policy net + gates in flight. See the decision tree at the top.
+8. ◑ EXPERT ITERATION (ADR-0015) — ROUND 1 GATES READ (2026-07-06): Gate 1 (apprentice vs
+   heuristic) PASSED at z=12.98; Gate 2 (apprentice-as-rollout-policy) FAILED at z=−8.64.
+   Distillation works; using it as the rollout policy doesn't yet. Diagnosis list at the top
+   (dead history features in rollouts / argmax determinism / 10× cost).
 9. Policy-likelihood belief with EXACT partner inference (consumes task 8's policy net; plays ✅
    recorded). THE principled ADR-0011 revival.
 10. ◑ Endgame exact solver ✅ built + oracle-verified; `endgameSolve` gate read +0.073 z=1.32

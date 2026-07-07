@@ -4,6 +4,23 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-06 (late) — Round-1 gates read off the box: distillation WORKS (Gate 1 z=12.98), apprentice-as-rollout FAILS (Gate 2 z=−8.64)
+Short session ("tell me the current state; I think the box finished"). It had: `ROUND1_COMPLETE`
+at 2026-07-07 00:18 UTC. Read the log over SSH, collected `~/round1.log` → `box-results/` and
+`policy-weights.json` (627 KB, best-val epoch 20, val CE 1.3860 / top-1 57.5%) → `tools/data/`.
+- **Gate 1 PASS:** raw `policy` (no search) beats `heuristic` by +0.988 pts/deal, z=12.98 @300 —
+  the two-tower distillation of the searched champion is real.
+- **Gate 2 FAIL:** `ismcts-rollout-net` loses to `ismcts-rollout-big` by −1.250 pts/deal,
+  z=−8.64 @100, at ~10× the wall-clock (4,650 s for 100 paired deals). Better standalone policy
+  ≠ better rollout policy — at fixed 600 iters the apprentice rollouts are decisively WORSE leaf
+  evaluators than the heuristic.
+- Status.md decision-tree branch taken: diagnose before round 2 — (a) history features are all
+  zeros inside simulated rollouts (train/play distribution shift), (b) argmax rollouts kill
+  diversity (try softmax sampling with temperature), (c) only then the 10× cost question.
+- **Box is idle (load 0.0) and fully delete-safe** — human can delete it in the Hetzner console;
+  re-provision is ~10 min when the diagnosis reruns are ready.
+
+---
 ## 2026-07-06 — Box harvested (1.5M-decision dataset); expert-iteration round 1 built end-to-end
 Dev machine back after 5 days; box queues all COMPLETE (queue-3 finished 07-04).
 - **Harvested the box** over real SSH: the expert-iteration dataset — **21,000 champion self-play

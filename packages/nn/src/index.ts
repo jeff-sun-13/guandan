@@ -11,7 +11,7 @@ export {
   mlpToJSON,
   mlpFromJSON,
 } from "./mlp";
-export { encodeObs, encodeAction, OBS_FEATURES, ACT_FEATURES } from "./encode-policy";
+export { encodeObs, encodeAction, OBS_FEATURES, ACT_FEATURES, OBS_HISTORY_RANGES } from "./encode-policy";
 export {
   type PolicyNet,
   type PolicyExample,

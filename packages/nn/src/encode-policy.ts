@@ -60,6 +60,15 @@ function addRankCounts(f: Float32Array, off: number, cards: Card[]): void {
 //    4 per-seat pass counts (/12, crude passing-history summary)
 export const OBS_FEATURES = 15 + 1 + 4 + 4 + 60 + 15 + 21 + 12 + 6 + 4; // 142
 
+// The obs-feature ranges [start, end) that are derived from `obs.history` and therefore ALL-ZERO
+// inside simulated rollouts (no history is threaded there). Used to train/play "nohist" nets whose
+// input distribution matches what rollouts actually see (the round-1 Gate-2 distribution-shift
+// suspect): per-seat played counts (24–84) and tribute+resist+pass-counts (120–142).
+export const OBS_HISTORY_RANGES: ReadonlyArray<readonly [number, number]> = [
+  [15 + 1 + 4 + 4, 15 + 1 + 4 + 4 + 60],
+  [OBS_FEATURES - (12 + 6 + 4), OBS_FEATURES],
+];
+
 /** Encode what `obs.player` can see into a fixed-length vector (the obs tower's input). */
 export function encodeObs(obs: Observation): Float32Array {
   const f = new Float32Array(OBS_FEATURES);

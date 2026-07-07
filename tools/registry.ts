@@ -221,9 +221,59 @@ if (existsSync(POLICY_WEIGHTS)) {
     REGISTRY["policy"] = { name: "policy", bot: policyBot };
     // THE expert-iteration challenger: champion config but rollouts played by the apprentice
     // instead of the v1 heuristic. Gate vs ismcts-rollout-big (identical but for rolloutBot).
+    // ROUND-1 RESULT: FAILED (−1.25 pts/deal, z=−8.64) — see the -t / -nh-t diagnosis variants.
     REGISTRY["ismcts-rollout-net"] = {
       name: "ismcts-rollout-net",
       bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: belief, rolloutBot: policyBot }),
+    };
+    // Round-1b diagnosis A: same net, but rollouts SAMPLE from the softmax (T=1) instead of argmax
+    // — restores move diversity (the targets are visit DISTRIBUTIONS, argmax collapses them).
+    REGISTRY["ismcts-rollout-net-t"] = {
+      name: "ismcts-rollout-net-t",
+      bot: makeIsmctsBot({
+        iterations: 600,
+        rollout: true,
+        sampler: belief,
+        rolloutBot: makePolicyBot(pnet, { temperature: 1 }),
+      }),
+    };
+  }
+}
+
+// Round-1b diagnosis B: a net TRAINED with history features zeroed (train-policy --zero-history 1),
+// so its input distribution matches simulated rollouts (where no history is threaded). The bots
+// zero the same ranges at inference so standalone play (arena threads history) matches too.
+const POLICY_WEIGHTS_NOHIST = join(dirname(fileURLToPath(import.meta.url)), "data", "policy-weights-nohist.json");
+if (existsSync(POLICY_WEIGHTS_NOHIST)) {
+  const nnet = policyFromJSON(readFileSync(POLICY_WEIGHTS_NOHIST, "utf8"));
+  if (nnet.obs.sizes[0] !== OBS_FEATURES) {
+    console.error(
+      `[registry] skipping nohist policy bots: policy-weights-nohist.json expects ${nnet.obs.sizes[0]} obs ` +
+        `features, encoder now emits ${OBS_FEATURES}. Re-run train-policy --zero-history 1.`,
+    );
+  } else {
+    // Sanity: the nohist apprentice should still beat `heuristic` (it keeps the unattributed
+    // outOfPlay block — the designed fallback).
+    REGISTRY["policy-nohist"] = { name: "policy-nohist", bot: makePolicyBot(nnet, { zeroHistory: true }) };
+    // Both fixes together: nohist net + T=1 sampled rollouts. The round-1b headline gate.
+    REGISTRY["ismcts-rollout-net-nh-t"] = {
+      name: "ismcts-rollout-net-nh-t",
+      bot: makeIsmctsBot({
+        iterations: 600,
+        rollout: true,
+        sampler: belief,
+        rolloutBot: makePolicyBot(nnet, { temperature: 1, zeroHistory: true }),
+      }),
+    };
+    // Nohist alone (argmax rollouts) — separates the two factors if -nh-t and -t disagree.
+    REGISTRY["ismcts-rollout-net-nh"] = {
+      name: "ismcts-rollout-net-nh",
+      bot: makeIsmctsBot({
+        iterations: 600,
+        rollout: true,
+        sampler: belief,
+        rolloutBot: makePolicyBot(nnet, { zeroHistory: true }),
+      }),
     };
   }
 }

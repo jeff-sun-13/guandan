@@ -5,6 +5,8 @@
 //
 // Usage: pnpm --filter @guandan/tools exec tsx train-policy.ts [data/policy.bin] [data/policy-weights.json]
 //        [--epochs 20] [--lr 3e-4] [--obs-hidden 128,64] [--act-hidden 32] [--embed 32]
+//        [--zero-history 1]   (train a NOHIST net: history-derived obs features zeroed, matching
+//                              what the net actually sees inside simulated rollouts — round 1b)
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { makeRng } from "@guandan/engine";
@@ -14,6 +16,7 @@ import {
   policyCE,
   policyScores,
   policyToJSON,
+  OBS_HISTORY_RANGES,
   type PolicyExample,
 } from "@guandan/nn";
 
@@ -36,6 +39,7 @@ const sizes = (s: string) => s.split(",").map((x) => Number(x.trim())).filter((n
 const obsHidden = sizes(opt("obs-hidden", "128,64"));
 const actHidden = sizes(opt("act-hidden", "32"));
 const embed = Number(opt("embed", "32"));
+const zeroHistory = opt("zero-history", "0") !== "0"; // takes a value ("1") to fit the flag parser
 
 const meta = JSON.parse(readFileSync(`${dataPath}.meta.json`, "utf8")) as {
   obsFeatures: number;
@@ -70,6 +74,12 @@ if (data.length !== meta.decisions) {
   console.warn(`warning: parsed ${data.length} decisions, meta says ${meta.decisions}`);
 }
 
+// NOHIST variant: zero the history-derived feature blocks in place (obs vectors are views into
+// `all`, so this rewrites the loaded copy once, before the train/val split).
+if (zeroHistory) {
+  for (const ex of data) for (const [s, e] of OBS_HISTORY_RANGES) ex.obs.fill(0, s, e);
+}
+
 // Split: last 5% validation (file order ≈ deal order; fine for a first pass).
 const nVal = Math.floor(data.length * 0.05);
 const train = data.slice(0, data.length - nVal);
@@ -98,7 +108,9 @@ uniCE /= Math.max(1, val.length);
 const net = initPolicyNet(OBS, ACT, makeRng(1), obsHidden, actHidden, embed);
 console.log(
   `\nPolicy: obs[${net.obs.sizes.join("→")}] · act[${net.act.sizes.join("→")}], ` +
-    `${train.length} train / ${val.length} val decisions; uniform-CE baseline ${uniCE.toFixed(3)}\n`,
+    `${train.length} train / ${val.length} val decisions; uniform-CE baseline ${uniCE.toFixed(3)}` +
+    (zeroHistory ? " [NOHIST: history features zeroed]" : "") +
+    `\n`,
 );
 
 let bestCE = Infinity;
