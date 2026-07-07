@@ -98,3 +98,19 @@ Paired-deal eval: ismcts-rollout-trib vs ismcts-rollout-nohist — batch 200, se
   [1600 deals] edge -0.0322 pts/deal, z=-1.07
   [1800 deals] edge -0.0225 pts/deal, z=-0.79
   [2000 deals] edge -0.0165 pts/deal, z=-0.61
+  [2200 deals] edge -0.0166 pts/deal, z=-0.65
+  [2400 deals] edge -0.0042 pts/deal, z=-0.17
+  [2600 deals] edge -0.0100 pts/deal, z=-0.42
+  [2800 deals] edge -0.0155 pts/deal, z=-0.68
+  [3000 deals] edge -0.0002 pts/deal, z=-0.01
+
+ismcts-rollout-trib  vs  ismcts-rollout-nohist   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 3000   diverging (d≠0): 1797
+  edge (ismcts-rollout-trib): -0.0002 deal-value pts/deal  (SE 0.0223, z=-0.01)
+  d histogram: -6:39  -5:73  -4:221  -3:110  -2:211  -1:257  0:1203  +1:233  +2:204  +3:114  +4:213  +5:76  +6:46
+  → inconclusive so far (|z| < 1.96)
+
+(3000 paired deals = 6000 games in 22948.6s)
+
+
+ROUND1B_COMPLETE
