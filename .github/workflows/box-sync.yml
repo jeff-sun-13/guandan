@@ -35,7 +35,7 @@ jobs:
             exit 0
           fi
           # ssh+cat instead of scp: no SFTP dependency, and failures are visible in the status file
-          for f in ab-queue.log ab-queue-2.log ab-queue-3.log; do
+          for f in ab-queue.log ab-queue-2.log ab-queue-3.log round1.log; do
             if ssh $SSH_OPTS "$BOX" "cat ~/$f" > "box-results/$f.tmp" 2>>"$status"; then
               mv "box-results/$f.tmp" "box-results/$f"
               echo "pulled $f ($(wc -c < "box-results/$f") bytes)" >> "$status"
@@ -45,12 +45,15 @@ jobs:
             fi
           done
           # live tmux pane tails: the tee'd logs can lag behind (node buffers stdout to pipes)
-          for s in abq abq2 abq3; do
+          for s in abq abq2 abq3 round1; do
             ssh $SSH_OPTS "$BOX" "tmux capture-pane -p -t $s 2>/dev/null | tail -20; true" > "box-results/pane-$s.txt" 2>/dev/null || true
           done
-          # learned-leaf weights, once training on the box has written them
+          # trained weights, once training on the box has written them
           if ssh $SSH_OPTS "$BOX" 'cat ~/guandan/tools/data/value-weights.json' > /tmp/weights.json 2>/dev/null; then
             mv /tmp/weights.json box-results/value-weights.json
+          fi
+          if ssh $SSH_OPTS "$BOX" 'cat ~/guandan/tools/data/policy-weights.json' > /tmp/pweights.json 2>/dev/null; then
+            mv /tmp/pweights.json box-results/policy-weights.json
           fi
       - name: Commit results if changed
         run: |
