@@ -2,7 +2,32 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-06_
+_Last updated: 2026-07-06 (late)_
+
+## ▶ RUNNING NOW — expert-iteration ROUND 1 on the box (`tmux round1`, log `~/round1.log`)
+**⚠️ The dev machine is IN USE by the human (gaming) — run ALL compute on the box.** Local node
+processes were killed; the box rerun supersedes the interrupted local training.
+Pipeline (tools/remote/run-round1.sh, launched 2026-07-07 00:00 UTC): prep from the on-box raw
+dataset → train the two-tower policy net (best-val checkpoint) → **GATE 1** `policy` vs
+`heuristic` (sanity: the apprentice distills a SEARCHED champion — it must crush v1; if not, the
+distillation is broken, stop and diagnose) → **GATE 2** `ismcts-rollout-net` vs
+`ismcts-rollout-big` (identical champions except apprentice vs heuristic rollouts, fixed 600
+iters = leaf-QUALITY test). Results flow to `box-results/round1.log` via box-sync (6 h schedule,
+or dispatch it on demand — playbook in the 2026-07-02 section below).
+**Next agent's decision tree:**
+- GATE 1 fails → distillation bug (check encode-policy feature alignment train-vs-play, and that
+  rollout obs lacking `history` degrades gracefully — the played-counts block is zeros there).
+- GATE 1 passes + GATE 2 ≥ +z3 → **the loop closes**: regenerate search data with the improved
+  champion (net rollouts + `candidates:"perType"` to fix the round-1 target bias), retrain,
+  re-gate — round 2. Also re-measure the budget curve (better leaf moves the knee right).
+- GATE 2 null/negative → likely suspects: history-features are zero inside simulated rollouts
+  (distribution shift — consider threading simulated history), or the apprentice's argmax is too
+  deterministic for rollout diversity; also weigh the ~10× rollout cost (a wall-clock-fair
+  comparison would give the heuristic version more iterations — quality-per-iteration is the
+  right first question, cost second).
+Round-1 numbers from the local (killed) run for reference: epoch 1 already at val CE 1.394 /
+top-1 53.9% vs uniform 1.413. Full local prep stats: 374,438 decisions / 2.09 M actions / avg
+k=5.6 / zero move-reconstruction misses.
 
 ## ✅ BOX FULLY HARVESTED (2026-07-06, dev machine back) — safe to delete the server
 Queue 3 finished 2026-07-04 (QUEUE3_COMPLETE). Collected over real SSH to the dev machine:
