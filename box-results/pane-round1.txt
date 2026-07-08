@@ -1,0 +1,20 @@
+
+Paired-deal eval: ismcts-rollout-net-nh-t vs ismcts-rollout-big — batch 200, see
+ds from 43001, sequential until |z|≥3 or 1200 deals
+
+  [200 deals] edge +0.0275 pts/deal, z=0.26
+  [400 deals] edge -0.0262 pts/deal, z=-0.35
+  [600 deals] edge -0.0450 pts/deal, z=-0.75
+  [800 deals] edge +0.0731 pts/deal, z=1.44
+
+
+
+
+
+
+
+
+
+
+
+
