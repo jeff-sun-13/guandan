@@ -2,7 +2,18 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-07 evening (round 1b read via box-sync; box is delete-safe)_
+_Last updated: 2026-07-07 evening (round 1b read; GATE 2B EXTENSION now running on the box)_
+
+## ▶ RUNNING NOW — Gate 2b extension (`tmux round1c`, log `~/round1c.log`, launched 2026-07-08 02:00 UTC)
+`pnpm evald ismcts-rollout-net-nh-t ismcts-rollout-big 200 --auto --max-deals=1200 --seed=43001` —
+1,200 more paired deals at fresh seeds (poolable with round 1b's 400 @ seeds 41001+, which read
++0.065, z=0.93). Stops early at |z|≥3; worst case ~12–15 h. **Read it over SSH** (`tail
+~/round1c.log`) — round1c.log is NOT in box-sync's pull list. Decision on completion: pool with
+the 41001 batch; resolved positive → the expert-iteration loop unblocks (round 2: regen data with
+the net-rollout champion + perType, retrain, re-gate; then the ~10× cost / wall-clock-fair check).
+Flat or negative → Gate 2 is closed under this approach; go to threading simulated history through
+rollouts (invasive) or pivot the policy net to policy-likelihood belief (task 9). Do NOT delete
+the box while this runs.
 
 ## 🏁 ROUND 1B COMPLETE (read 2026-07-07 evening, via box-sync) — GATE 2 STILL NOT UNBLOCKED, but the negative narrowed hard
 Box pipeline finished 2026-07-07 13:25 UTC (`ROUND1B_COMPLETE`, commit 5fa1986, script
