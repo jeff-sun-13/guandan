@@ -1,0 +1,28 @@
+
+===== [2026-07-09 03:37:34] budget 1800 vs 1200 EXTENDED =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-huge ismcts-rollout-1200 200 --auto --max-deals=1200 --seed=44001
+$ tsx evald.ts ismcts-rollout-huge ismcts-rollout-1200 200 --auto --max-deals=1200 --seed=44001
+
+Paired-deal eval: ismcts-rollout-huge vs ismcts-rollout-1200 — batch 200, seeds from 44001, sequential until |z|≥3 or 1200 deals
+
+  [200 deals] edge +0.1675 pts/deal, z=1.78
+  [400 deals] edge +0.1713 pts/deal, z=2.64
+  [600 deals] edge +0.1758 pts/deal, z=3.24
+
+ismcts-rollout-huge  vs  ismcts-rollout-1200   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 600   diverging (d≠0): 447
+  edge (ismcts-rollout-huge): +0.1758 deal-value pts/deal  (SE 0.0542, z=3.24)
+  d histogram: -6:6  -5:10  -4:47  -3:36  -2:39  -1:46  0:153  +1:82  +2:49  +3:32  +4:69  +5:21  +6:10
+  → ismcts-rollout-huge is stronger (z ≥ 3 — safe even as a sequential stop)
+
+(600 paired deals = 1200 games in 10824.4s)
+
+
+===== [2026-07-09 06:37:59] exact-endgame leaf EXTENDED (rollout 600) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-endgame ismcts-rollout-big 200 --auto --max-deals=1600 --seed=45001
+$ tsx evald.ts ismcts-rollout-endgame ismcts-rollout-big 200 --auto --max-deals=1600 --seed=45001
+
+Paired-deal eval: ismcts-rollout-endgame vs ismcts-rollout-big — batch 200, seeds from 45001, sequential until |z|≥3 or 1600 deals
+
+  [200 deals] edge +0.0050 pts/deal, z=0.05
+  [400 deals] edge +0.0075 pts/deal, z=0.11
