@@ -4,6 +4,22 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-08 (late) — Gate 2 CLOSED at parity; night queue 4 launched (budget + endgame extensions)
+Human back briefly ("figure out tonight's stuff"). Read the Gate 2b extension off the box:
+- **round1c: +0.0225 pts/deal, z=0.55 @1200 deals** (never a sequential stop). Pooled with round
+  1b's 400 → **+0.033, z≈0.94 over 1600 paired deals**. Pre-registered verdict applies: Gate 2
+  CLOSED under the current net — parity at fixed iterations, ~10× wall-clock cost, so strictly
+  worse wall-clock-fair. **Apprentice-as-rollout PARKED** (reopen only with a stronger net).
+  Log collected → `box-results/round1c.log`. The distillation itself stands (Gate 1 z=12.98,
+  nohist z=15.25); the policy net's next job is task 9 (policy-likelihood belief) — a build task
+  for a fresh session, prereqs all in place.
+- **Night queue 4 launched** (`tmux nightq`, `tools/remote/run-queue-4.sh`): (1) budget 1800v1200
+  extended to ≤1200 more deals, seeds 44001+ (was +0.171, z=2.59 @400 — resolves the ship-target
+  budget re-decision); (2) exact-endgame leaf extended to ≤1600 more deals, seeds 45001+ (was
+  +0.073, z=1.32 @400 — adopt or drop). Both logs added to box-sync's pull list
+  (`night-queue.log`, `round1c.log`).
+
+---
 ## 2026-07-07 (evening) — Round 1b read off the box: Gate 2 still not unblocked, but both diagnoses helped
 Routine check-in ("check the overnight round 1b run, write it up"), read via box-sync (no SSH).
 `ROUND1B_COMPLETE` at 13:25 UTC; `box-results/round1b.log` + `policy-weights-nohist.json` (629 KB)

@@ -2,18 +2,35 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-07 evening (round 1b read; GATE 2B EXTENSION now running on the box)_
+_Last updated: 2026-07-08 (late): GATE 2 CLOSED at parity; night queue 4 running on the box_
 
-## ▶ RUNNING NOW — Gate 2b extension (`tmux round1c`, log `~/round1c.log`, launched 2026-07-08 02:00 UTC)
-`pnpm evald ismcts-rollout-net-nh-t ismcts-rollout-big 200 --auto --max-deals=1200 --seed=43001` —
-1,200 more paired deals at fresh seeds (poolable with round 1b's 400 @ seeds 41001+, which read
-+0.065, z=0.93). Stops early at |z|≥3; worst case ~12–15 h. **Read it over SSH** (`tail
-~/round1c.log`) — round1c.log is NOT in box-sync's pull list. Decision on completion: pool with
-the 41001 batch; resolved positive → the expert-iteration loop unblocks (round 2: regen data with
-the net-rollout champion + perType, retrain, re-gate; then the ~10× cost / wall-clock-fair check).
-Flat or negative → Gate 2 is closed under this approach; go to threading simulated history through
-rollouts (invasive) or pivot the policy net to policy-likelihood belief (task 9). Do NOT delete
-the box while this runs.
+## ▶ RUNNING NOW — night queue 4 (`tmux nightq`, log `~/night-queue.log`, launched 2026-07-09 03:37 UTC)
+`tools/remote/run-queue-4.sh` (commit 18c3989), sequential, both in box-sync's pull list now:
+1. **Budget 1800v1200 EXTENDED** — `ismcts-rollout-huge` vs `-1200`, up to 1200 more deals, seeds
+   44001+ (pool with +0.171, z=2.59 @400 from seeds 20001+). Resolves the pending ship-target
+   budget re-decision (1200 iters ≈ 1 s/move vs 1800 ≈ 2 s/move).
+2. **Exact-endgame leaf EXTENDED** — `ismcts-rollout-endgame` vs `-big`, up to 1600 more deals,
+   seeds 45001+ (pool with +0.073, z=1.32 @400). Adopt-or-drop for the endgame solver in rollouts.
+Do NOT delete the box while this runs. After both are read, everything is collected → delete-safe.
+
+## 🏁 GATE 2 CLOSED FOR NOW (2026-07-08) — apprentice-as-rollout = PARITY at ~10× cost → PARKED; task 9 is next
+The Gate 2b extension (`round1c`, 1200 deals, seeds 43001+) finished: **+0.0225 pts/deal, z=0.55.**
+Pooled with round 1b's 400 deals (+0.065, SE 0.0699): inverse-variance → **+0.033 pts/deal,
+z≈0.94 over 1600 paired deals.** Per the pre-registered decision ("flat out to ~1200–1600 deals →
+treat Gate 2 as closed under this approach"): the nohist+temperature apprentice rollout is at
+PARITY with the heuristic rollout at fixed 600 iters — never proven better — while costing ~10×
+wall-clock, i.e. strictly worse on wall-clock-fair terms (the heuristic side could run ~6000 iters
+in the same time, and the budget curve says iterations still buy strength). **Apprentice-as-rollout
+is PARKED** (like history-conditioning before it: not abandoned — a stronger net from a round-2
+dataset could reopen it, and "parity with a learnable policy" still beats "parity hand-coded" in
+principle — but no more spend under the current net). Log: `box-results/round1c.log`.
+**What survives round 1 intact:** the distillation pipeline WORKS (Gate 1 z=12.98; nohist z=15.25
+— the strongest fast bot we have, ~µs/move), the dataset is banked, and the policy net's REAL next
+job is **task 9: policy-likelihood belief** — weight/generate determinized worlds by the likelihood
+of each seat's OBSERVED plays under the policy net (the partner runs OUR EXACT policy → near-exact
+partner inference; GIB/Skat-style, ADR-0011's principled revival). That is a BUILD task for a fresh
+session (design + implementation + tests on the dev machine, gates on the box), not an overnight
+eval. Prereqs all in place: per-seat play attribution ✅ recorded, policy net ✅, paired harness ✅.
 
 ## 🏁 ROUND 1B COMPLETE (read 2026-07-07 evening, via box-sync) — GATE 2 STILL NOT UNBLOCKED, but the negative narrowed hard
 Box pipeline finished 2026-07-07 13:25 UTC (`ROUND1B_COMPLETE`, commit 5fa1986, script
@@ -233,10 +250,10 @@ EXACT policy → near-exact partner inference — the principled ADR-0011 reviva
 6. ✅ A-level match-aware objective: built, gated null at pinned-A (−0.048 z=−0.81), no regression
    at normal levels. Available via `useMatchContext`; rarely-triggering by construction.
 7. ✅ Stage-1 learned VALUE leaf: FAILED decisively (z=−3.91) after all fixes → ADR-0015 pivot.
-8. ◑ EXPERT ITERATION (ADR-0015) — ROUND 1 GATES READ (2026-07-06): Gate 1 (apprentice vs
-   heuristic) PASSED at z=12.98; Gate 2 (apprentice-as-rollout-policy) FAILED at z=−8.64.
-   Distillation works; using it as the rollout policy doesn't yet. Diagnosis list at the top
-   (dead history features in rollouts / argmax determinism / 10× cost).
+8. ◑ EXPERT ITERATION (ADR-0015) — round 1 DONE, apprentice-as-rollout PARKED (2026-07-08):
+   Gate 1 PASSED (z=12.98; nohist variant z=15.25 — distillation works, strongest fast bot).
+   Gate 2 after both fixes (nohist+temperature) pooled to parity (z≈0.94 @1600 deals) at ~10×
+   rollout cost → closed under the current net. Reopen only with a stronger net (round-2 data).
 9. Policy-likelihood belief with EXACT partner inference (consumes task 8's policy net; plays ✅
    recorded). THE principled ADR-0011 revival.
 10. ◑ Endgame exact solver ✅ built + oracle-verified; `endgameSolve` gate read +0.073 z=1.32

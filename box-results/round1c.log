@@ -1,0 +1,20 @@
+$ pnpm --filter @guandan/tools evald ismcts-rollout-net-nh-t ismcts-rollout-big 200 --auto --max-deals=1200 --seed=43001
+$ tsx evald.ts ismcts-rollout-net-nh-t ismcts-rollout-big 200 --auto --max-deals=1200 --seed=43001
+
+Paired-deal eval: ismcts-rollout-net-nh-t vs ismcts-rollout-big — batch 200, seeds from 43001, sequential until |z|≥3 or 1200 deals
+
+  [200 deals] edge +0.0275 pts/deal, z=0.26
+  [400 deals] edge -0.0262 pts/deal, z=-0.35
+  [600 deals] edge -0.0450 pts/deal, z=-0.75
+  [800 deals] edge +0.0731 pts/deal, z=1.44
+  [1000 deals] edge +0.0330 pts/deal, z=0.72
+  [1200 deals] edge +0.0225 pts/deal, z=0.55
+
+ismcts-rollout-net-nh-t  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 1200   diverging (d≠0): 900
+  edge (ismcts-rollout-net-nh-t): +0.0225 deal-value pts/deal  (SE 0.0412, z=0.55)
+  d histogram: -6:37  -5:44  -4:97  -3:47  -2:101  -1:111  0:300  +1:103  +2:110  +3:71  +4:118  +5:36  +6:25
+  → inconclusive so far (|z| < 1.96)
+
+(1200 paired deals = 2400 games in 33758.7s)
+
