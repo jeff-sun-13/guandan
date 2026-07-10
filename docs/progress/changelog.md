@@ -4,6 +4,25 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-09 — Night queue 4 read: 1800>1200 iters DECISIVE (z≈4.15 pooled); endgame-in-rollouts dropped; box delete-safe
+Harvested night queue 4 off the box over SSH (finished ~21:09 UTC; `NIGHTQ_COMPLETE`; final log
+scp'd to `box-results/night-queue.log` — the overnight box-sync copy had been taken mid-run):
+- **Budget 1800v1200 extension: DECISIVE.** Sequential stop at 600 deals (seeds 44001+),
+  +0.1758 pts/deal, z=3.24. Pooled with 2026-07-03's 400 deals (+0.171, z=2.59): **+0.174
+  pts/deal, z≈4.15 over 1000 paired deals.** With 1200>600 already decisive, the old "plateau at
+  1200–1800" claim is now fully refuted on the paired harness — iterations keep buying strength
+  through 1800. Champion stays `ismcts-rollout-huge`. Ship-target latency choice (1 s vs 2 s/move
+  for −0.17 pts/deal) goes to the human at integration time; no build work hinges on it.
+- **Exact-endgame-in-rollouts extension: NULL → DROPPED.** Full 1600-deal cap (seeds 45001+),
+  −0.0047 pts/deal, z=−0.14; pooled with the prior 400 (+0.073, z=1.32): **+0.017 pts/deal,
+  z≈0.58 over 2000 paired deals.** Pre-registered adopt-or-drop → `endgameSolve` stays OFF in
+  champion rollouts. Solver stays in the codebase (oracle-verified) for possible decision-time use.
+- **Box drained: DELETE-SAFE.** tmux empty, load 0.00, nothing uncollected (`tools/data` weights
+  all previously harvested). Human should delete the server in the Hetzner console.
+- Next per the plan: **task 9 — policy-likelihood belief** (fresh build session on the dev
+  machine; gates on a re-provisioned box).
+
+---
 ## 2026-07-08 (late) — Gate 2 CLOSED at parity; night queue 4 launched (budget + endgame extensions)
 Human back briefly ("figure out tonight's stuff"). Read the Gate 2b extension off the box:
 - **round1c: +0.0225 pts/deal, z=0.55 @1200 deals** (never a sequential stop). Pooled with round

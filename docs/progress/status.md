@@ -2,16 +2,26 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-08 (late): GATE 2 CLOSED at parity; night queue 4 running on the box_
+_Last updated: 2026-07-09: night queue 4 read — budget 1800>1200 DECISIVE, endgame-in-rollouts DROPPED; box DELETE-SAFE; task 9 next_
 
-## ▶ RUNNING NOW — night queue 4 (`tmux nightq`, log `~/night-queue.log`, launched 2026-07-09 03:37 UTC)
-`tools/remote/run-queue-4.sh` (commit 18c3989), sequential, both in box-sync's pull list now:
-1. **Budget 1800v1200 EXTENDED** — `ismcts-rollout-huge` vs `-1200`, up to 1200 more deals, seeds
-   44001+ (pool with +0.171, z=2.59 @400 from seeds 20001+). Resolves the pending ship-target
-   budget re-decision (1200 iters ≈ 1 s/move vs 1800 ≈ 2 s/move).
-2. **Exact-endgame leaf EXTENDED** — `ismcts-rollout-endgame` vs `-big`, up to 1600 more deals,
-   seeds 45001+ (pool with +0.073, z=1.32 @400). Adopt-or-drop for the endgame solver in rollouts.
-Do NOT delete the box while this runs. After both are read, everything is collected → delete-safe.
+## 🏁 NIGHT QUEUE 4 COMPLETE (read 2026-07-09 over SSH) — box is DELETE-SAFE; task 9 is next
+`tools/remote/run-queue-4.sh` finished (`NIGHTQ_COMPLETE`, ~21:09 UTC 2026-07-09; full log
+`box-results/night-queue.log` — final copy scp'd; the overnight box-sync copy was mid-run):
+1. **Budget 1800v1200 EXTENDED: DECISIVE — 1800 iters beats 1200.** Sequential stop at 600 deals
+   (seeds 44001+): +0.1758 pts/deal, z=3.24. Inverse-variance pool with the 2026-07-03 batch
+   (+0.171, z=2.59 @400, seeds 20001+): **+0.174 pts/deal, z≈4.15 over 1000 paired deals.** The
+   budget curve genuinely extends past 1200; champion stays `ismcts-rollout-huge` (1800 iters,
+   ~2 s/move). **Ship-target call for the human at integration time:** 1800 ≈ 2 s/move vs 1200 ≈
+   1 s/move costing −0.17 pts/deal. Nothing to build now — just a latency preference to pick when
+   bots get wired into the app.
+2. **Exact-endgame leaf EXTENDED: NULL → DROPPED from rollouts.** Ran the full 1600-deal cap
+   (seeds 45001+): −0.0047 pts/deal, z=−0.14. Pooled with the prior 400 (+0.073, z=1.32):
+   **+0.017 pts/deal, z≈0.58 over 2000 paired deals.** Per the pre-registered adopt-or-drop:
+   `endgameSolve` stays OFF in the champion's rollouts. (The solver itself remains built +
+   oracle-verified; decision-time/analysis uses are still possible later.)
+**Box state: tmux empty, load 0.00, everything collected → the box is DELETE-SAFE. Human: delete
+it in the Hetzner console to stop billing.** Task 9 is a dev-machine build; re-provision a box
+later for its gates (~10 min via `tools/remote/setup.sh`).
 
 ## 🏁 GATE 2 CLOSED FOR NOW (2026-07-08) — apprentice-as-rollout = PARITY at ~10× cost → PARKED; task 9 is next
 The Gate 2b extension (`round1c`, 1200 deals, seeds 43001+) finished: **+0.0225 pts/deal, z=0.55.**
@@ -256,12 +266,13 @@ EXACT policy → near-exact partner inference — the principled ADR-0011 reviva
    rollout cost → closed under the current net. Reopen only with a stronger net (round-2 data).
 9. Policy-likelihood belief with EXACT partner inference (consumes task 8's policy net; plays ✅
    recorded). THE principled ADR-0011 revival.
-10. ◑ Endgame exact solver ✅ built + oracle-verified; `endgameSolve` gate read +0.073 z=1.32
-    (below resolution — extend at high n alongside the tribute lane). Designed pair conventions
-    still need the human's conventions — ASK HIM.
-**Budget re-decision pending (2026-07-03 finding):** 1200>600 decisive, 1800≳1200 likely — the
-ship-target latency/strength tradeoff should be revisited with the human (1200 iters ≈ 1s/move
-was the old sweet spot; the curve extends further than believed).
+10. ◑ Endgame exact solver ✅ built + oracle-verified; `endgameSolve`-in-rollouts RESOLVED NULL
+    2026-07-09 (pooled +0.017, z≈0.58 @2000 deals) → stays OFF in the champion. Designed pair
+    conventions still need the human's conventions — ASK HIM.
+**Budget re-decision RESOLVED on strength (2026-07-09):** 1200>600 decisive AND 1800>1200 decisive
+(pooled +0.174, z≈4.15 @1000 deals) — the budget lever is NOT tapped out at 1200. Champion =
+`ismcts-rollout-huge` (1800, ~2 s/move). The only remaining piece is the human's latency
+preference at integration time (2 s vs 1 s/move for −0.17 pts/deal).
 
 ## Milestone: **M1 complete (playable web app vs 3 heuristic bots). Prior-art documented. Repo now under git + pushed to GitHub (github.com/jeff-sun-13/guandan) and remote eval compute is LIVE (Hetzner box, ADR-0009). CHAMPION = `ismcts-rollout-huge` (1800 iters) by a hair, but the full budget-saturation curve (2026-06-29, overnight on Hetzner) shows **strength PLATEAUS ~1200–1800 iters** — Elo by budget: 150→1193, 300→1473, 600→1662, 1200→1842, 1800→1877; 3600 vs 1800 inconclusive (58%), 7200 vs 3600 no gain. **`1200` iters is the strength/latency SWEET SPOT** (tied with 1800, ~1s/move) → the ship target for live play. This REVISES the earlier "no plateau / compute-elastic" claim (that extrapolated from 150→600). **The search-budget lever is now TAPPED OUT** — next strength must come from history threading (ADR-0011), a better leaf, or the learned route (ADR-0010), NOT more iterations. Lineage: rollout-leaf ISMCTS beat `pimcStaticBot` ~82% (2026-06-26); the v2 thesis (search + belief + good leaf TOGETHER) is validated. Cost: ~0.6–2 s/move (fine for the strength-first campaign + for actual human play). Campaign: "maximize strength, long haul, final product only, do NOT wire into the app" (human, 2026-06-26). Instruments: parallel eval (`pnpm eval`) + Bradley-Terry ladder (`pnpm ladder`). External benchmark scoped (OpenGuanDan + DanZero), still needs the human's machine.**
 

@@ -30,3 +30,16 @@ Paired-deal eval: ismcts-rollout-endgame vs ismcts-rollout-big — batch 200, se
   [800 deals] edge -0.0088 pts/deal, z=-0.18
   [1000 deals] edge -0.0060 pts/deal, z=-0.14
   [1200 deals] edge +0.0283 pts/deal, z=0.72
+  [1400 deals] edge +0.0057 pts/deal, z=0.16
+  [1600 deals] edge -0.0047 pts/deal, z=-0.14
+
+ismcts-rollout-endgame  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 1600   diverging (d≠0): 1212
+  edge (ismcts-rollout-endgame): -0.0047 deal-value pts/deal  (SE 0.0343, z=-0.14)
+  d histogram: -6:27  -5:57  -4:146  -3:76  -2:135  -1:155  0:388  +1:181  +2:145  +3:74  +4:137  +5:46  +6:33
+  → inconclusive so far (|z| < 1.96)
+
+(1600 paired deals = 3200 games in 52274.0s)
+
+
+NIGHTQ_COMPLETE
