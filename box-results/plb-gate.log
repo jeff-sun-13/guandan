@@ -1,0 +1,47 @@
+
+===== [2026-07-10 03:04:00] task 9 HEADLINE: policy-likelihood belief vs champion sampler (600 iters) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-plb ismcts-rollout-big 200 --auto --max-deals=1600 --seed=46001
+$ tsx evald.ts ismcts-rollout-plb ismcts-rollout-big 200 --auto --max-deals=1600 --seed=46001
+
+Paired-deal eval: ismcts-rollout-plb vs ismcts-rollout-big — batch 200, seeds from 46001, sequential until |z|≥3 or 1600 deals
+
+  [200 deals] edge -0.0725 pts/deal, z=-0.77
+  [400 deals] edge -0.0512 pts/deal, z=-0.74
+  [600 deals] edge -0.0900 pts/deal, z=-1.59
+  [800 deals] edge -0.1087 pts/deal, z=-2.26
+  [1000 deals] edge -0.1075 pts/deal, z=-2.49
+  [1200 deals] edge -0.1154 pts/deal, z=-2.92
+  [1400 deals] edge -0.1325 pts/deal, z=-3.66
+
+ismcts-rollout-plb  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 1400   diverging (d≠0): 1023
+  edge (ismcts-rollout-plb): -0.1325 deal-value pts/deal  (SE 0.0362, z=-3.66)
+  d histogram: -6:37  -5:63  -4:120  -3:68  -2:124  -1:146  0:377  +1:138  +2:94  +3:75  +4:114  +5:27  +6:17
+  → ismcts-rollout-big is stronger (z ≤ −3 — safe even as a sequential stop)
+
+(1400 paired deals = 2800 games in 10924.4s)
+
+
+===== [2026-07-10 06:06:06] task 9 secondary: tribute-pin base under the likelihood sampler =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-plb-trib ismcts-rollout-plb 200 --auto --max-deals=1200 --seed=47001
+$ tsx evald.ts ismcts-rollout-plb-trib ismcts-rollout-plb 200 --auto --max-deals=1200 --seed=47001
+
+Paired-deal eval: ismcts-rollout-plb-trib vs ismcts-rollout-plb — batch 200, seeds from 47001, sequential until |z|≥3 or 1200 deals
+
+  [200 deals] edge +0.0950 pts/deal, z=1.08
+  [400 deals] edge +0.0775 pts/deal, z=1.26
+  [600 deals] edge +0.0583 pts/deal, z=1.19
+  [800 deals] edge +0.0338 pts/deal, z=0.79
+  [1000 deals] edge +0.0355 pts/deal, z=0.94
+  [1200 deals] edge +0.0121 pts/deal, z=0.35
+
+ismcts-rollout-plb-trib  vs  ismcts-rollout-plb   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 1200   diverging (d≠0): 736
+  edge (ismcts-rollout-plb-trib): +0.0121 deal-value pts/deal  (SE 0.0347, z=0.35)
+  d histogram: -6:15  -5:31  -4:83  -3:39  -2:89  -1:102  0:464  +1:103  +2:101  +3:53  +4:81  +5:19  +6:20
+  → inconclusive so far (|z| < 1.96)
+
+(1200 paired deals = 2400 games in 9656.8s)
+
+
+PLBGATE_COMPLETE
