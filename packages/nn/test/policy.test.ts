@@ -10,6 +10,11 @@ import {
   policyCE,
   policyToJSON,
   policyFromJSON,
+  towerForward,
+  towerPre1,
+  towerForwardFromPre1,
+  encodeObs,
+  handRankCounts,
   type PolicyExample,
   type PolicyNet,
 } from "../src/index";
@@ -122,5 +127,60 @@ describe("two-tower policy net", () => {
     const a = Array.from(policyScores(net, ex.obs, ex.acts));
     const b = Array.from(policyScores(restored, ex.obs, ex.acts));
     expect(b).toEqual(a);
+  });
+});
+
+// towerPre1 + towerForwardFromPre1 (task 9): completing a forward pass from a cached first-layer
+// pre-activation, with the changed input slots applied as column deltas, must match a plain
+// towerForward on the fully-assembled input.
+describe("delta forward from cached pre-activation", () => {
+  it("towerForwardFromPre1(template, deltas) ≈ towerForward(template + deltas)", () => {
+    const rng = makeRng(77);
+    const net = initPolicyNet(40, 10, rng, [24, 16], [8], 12);
+    for (let trial = 0; trial < 20; trial++) {
+      // Template: random input with the first 15 slots zeroed (the "own hand" block).
+      const template = new Float32Array(40);
+      for (let i = 15; i < 40; i++) template[i] = nextFloat(rng) * 2 - 1;
+      const pre1 = towerPre1(net.obs, template);
+      // Sparse deltas in the zeroed block (integer counts, like a hand).
+      const idx: number[] = [];
+      const val: number[] = [];
+      const full = template.slice();
+      for (let s = 0; s < 15; s++) {
+        if (nextFloat(rng) < 0.5) {
+          const c = 1 + Math.floor(nextFloat(rng) * 2);
+          idx.push(s);
+          val.push(c);
+          full[s] = c;
+        }
+      }
+      const viaDelta = towerForwardFromPre1(net.obs, pre1, idx, val);
+      const direct = towerForward(net.obs, full);
+      expect(viaDelta.length).toBe(direct.length);
+      for (let i = 0; i < direct.length; i++) {
+        expect(Math.abs(viaDelta[i]! - direct[i]!)).toBeLessThan(1e-4);
+      }
+      // pre1 is a shared cache — it must not be mutated by the delta pass.
+      const pre1Again = towerPre1(net.obs, template);
+      expect(Array.from(pre1)).toEqual(Array.from(pre1Again));
+    }
+  });
+
+  it("handRankCounts equals the own-hand block of encodeObs", () => {
+    const hand = [0, 0, 5, 9, 13, 52, 53, 53]; // duplicates + jokers
+    const counts = handRankCounts(hand);
+    const obs = {
+      level: 5,
+      player: 0,
+      hand,
+      handCounts: [8, 27, 27, 27],
+      outOfPlay: [],
+      trick: null,
+      toAct: 0,
+      finished: [],
+      phase: "playing" as const,
+    };
+    const f = encodeObs(obs);
+    for (let s = 0; s < 15; s++) expect(f[s]).toBe(counts[s]);
   });
 });

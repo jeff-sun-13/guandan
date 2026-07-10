@@ -25,6 +25,13 @@ export {
 export { makeLearnedLeaf } from "./learned-leaf";
 export { makePolicyBot } from "./policy-bot";
 export { makeBeliefSampler, beliefSampler, currentTrickPassers, type Sampler, type BeliefOptions } from "./belief";
+export {
+  makePolicyBeliefSampler,
+  buildEvidence,
+  worldLogLikelihood,
+  type PolicyBeliefOptions,
+  type PoolStats,
+} from "./policy-belief";
 export { staticDealValue, boundedStaticValue, playsToEmpty, bombCount } from "./static-eval";
 export { dealValue, dealValueCtx } from "./value";
 export { solveEndgame, cardsRemaining, type EndgameSolve } from "./endgame";

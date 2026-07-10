@@ -91,6 +91,71 @@ export function towerForward(t: Tower, x: Float32Array, acts?: Float32Array[]): 
   return cur;
 }
 
+/**
+ * First-layer PRE-activation of a tower for input `x` (W₁·x + b₁, no ReLU). Cache this for a
+ * template input whose remaining slots will be edited sparsely — `towerForwardFromPre1` completes
+ * the pass. Motivation (task 9): a belief scorer evaluates the obs tower for MANY hypothesized
+ * hands that differ from a public template only in the 15 own-hand slots; recomputing the full
+ * 142-wide first layer per hand would be ~10× wasted work.
+ */
+export function towerPre1(t: Tower, x: Float32Array): Float32Array {
+  const inN = t.sizes[0]!;
+  const outN = t.sizes[1]!;
+  const W = t.W[0]!;
+  const b = t.b[0]!;
+  const out = new Float32Array(outN);
+  for (let j = 0; j < outN; j++) {
+    let s = b[j]!;
+    const row = j * inN;
+    for (let i = 0; i < inN; i++) s += W[row + i]! * x[i]!;
+    out[j] = s;
+  }
+  return out;
+}
+
+/**
+ * Complete a tower forward pass from a cached first-layer pre-activation (`towerPre1`), first
+ * adding `deltaVal[k]` times input-column `deltaIdx[k]` for each k. Numerically equal (up to float
+ * association) to `towerForward(t, x + Σ deltaVal·e_deltaIdx)`; pinned by an equivalence test.
+ * `pre1` is treated as a shared cache and never mutated.
+ */
+export function towerForwardFromPre1(
+  t: Tower,
+  pre1: Float32Array,
+  deltaIdx: ArrayLike<number>,
+  deltaVal: ArrayLike<number>,
+): Float32Array {
+  const inN = t.sizes[0]!;
+  const h1 = t.sizes[1]!;
+  const W1 = t.W[0]!;
+  const L = t.W.length;
+  const first = new Float32Array(pre1);
+  for (let k = 0; k < deltaIdx.length; k++) {
+    const d = deltaVal[k]!;
+    if (d === 0) continue;
+    const col = deltaIdx[k]!;
+    for (let j = 0; j < h1; j++) first[j] = first[j]! + d * W1[j * inN + col]!;
+  }
+  if (L === 1) return first; // single-layer tower: layer 1 IS the linear output
+  for (let j = 0; j < h1; j++) if (first[j]! < 0) first[j] = 0; // ReLU on the hidden layer
+  let cur = first;
+  for (let l = 1; l < L; l++) {
+    const iN = t.sizes[l]!;
+    const oN = t.sizes[l + 1]!;
+    const W = t.W[l]!;
+    const b = t.b[l]!;
+    const out = new Float32Array(oN);
+    for (let j = 0; j < oN; j++) {
+      let s = b[j]!;
+      const row = j * iN;
+      for (let i = 0; i < iN; i++) s += W[row + i]! * cur[i]!;
+      out[j] = l < L - 1 && s < 0 ? 0 : s; // ReLU hidden, linear last (mirrors towerForward)
+    }
+    cur = out;
+  }
+  return cur;
+}
+
 /** Per-tower Adam state (moment buffers per weight/bias array). */
 interface AdamState {
   mW: Float32Array[];

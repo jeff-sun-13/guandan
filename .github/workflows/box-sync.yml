@@ -35,7 +35,7 @@ jobs:
             exit 0
           fi
           # ssh+cat instead of scp: no SFTP dependency, and failures are visible in the status file
-          for f in ab-queue.log ab-queue-2.log ab-queue-3.log round1.log round1b.log round1c.log night-queue.log; do
+          for f in ab-queue.log ab-queue-2.log ab-queue-3.log round1.log round1b.log round1c.log night-queue.log plb-gate.log; do
             if ssh $SSH_OPTS "$BOX" "cat ~/$f" > "box-results/$f.tmp" 2>>"$status"; then
               mv "box-results/$f.tmp" "box-results/$f"
               echo "pulled $f ($(wc -c < "box-results/$f") bytes)" >> "$status"
@@ -45,7 +45,7 @@ jobs:
             fi
           done
           # live tmux pane tails: the tee'd logs can lag behind (node buffers stdout to pipes)
-          for s in abq abq2 abq3 round1 round1b round1c nightq; do
+          for s in abq abq2 abq3 round1 round1b round1c nightq plbgate; do
             ssh $SSH_OPTS "$BOX" "tmux capture-pane -p -t $s 2>/dev/null | tail -20; true" > "box-results/pane-$s.txt" 2>/dev/null || true
           done
           # trained weights, once training on the box has written them

@@ -4,6 +4,27 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-09 (late) — Task 9 BUILT: policy-likelihood belief (ADR-0016); gate launched on the box
+The apprentice's second job, done the principled way (GIB/Skat likelihood conditioning):
+- **`packages/bots/src/policy-belief.ts`** — per root decision, pool K=64 base-sampled worlds and
+  weight each by Σ log P_net(observed move | seat's reconstructed hand); ISMCTS iterations draw
+  from the pool ∝ weight. ε-mixed likelihoods (no hard kills), log-space weights, `power` flattener,
+  `maxEvents` evidence window, optional tribute-pin base dealer. Pool cached per obs identity.
+- **Enablers:** `recordMove` stamps `seq` + pre-move trick on every play/pass (exact reconstruction
+  of any past decision context — recorded, not re-derived); likelihood factorizes per seat (hand at
+  past decision = current hand + cards since played, per ADR-0014 attribution); public obs encoded
+  once per decision, hands applied as first-layer column deltas (`towerPre1`/`towerForwardFromPre1`
+  in nn, ~2.5× cheaper; act-tower embeddings cached per decision).
+- **Registered:** `ismcts-rollout-plb` (+ `-plb-trib`) — champion config, sampler swapped.
+- **Verified:** 189 tests green (8 new: exact reconstruction vs a true traced deal incl. pre1
+  equality + Σlog(1/k) identity at mix=1; seq contiguity; determinism; fallbacks; real-net
+  true-world-outranks-random). Calibration probe `tools/probe-plb.ts`: ~20 ms/decision build,
+  s/move UNCHANGED vs champion at 600 iters; ESS p50≈17/64 (sharp but healthy). evald smoke ran.
+- **Gate launched** (`tools/remote/run-plb-gate.sh`, tmux `plbgate`, log in box-sync pull list):
+  headline `-plb` vs `-big` (seeds 46001+, ≤1600 deals, |z|≥3 sequential); secondary `-plb-trib` vs
+  `-plb` (seeds 47001+). Pre-registered outcomes in ADR-0016. **Box must stay up until read.**
+
+---
 ## 2026-07-09 — Night queue 4 read: 1800>1200 iters DECISIVE (z≈4.15 pooled); endgame-in-rollouts dropped; box delete-safe
 Harvested night queue 4 off the box over SSH (finished ~21:09 UTC; `NIGHTQ_COMPLETE`; final log
 scp'd to `box-results/night-queue.log` — the overnight box-sync copy had been taken mid-run):

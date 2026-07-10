@@ -89,12 +89,20 @@ export function applyTributePlan(
   return { tribute };
 }
 
-/** Record one decided move into the public history (plays and passes are both attributed). */
+/**
+ * Record one decided move into the public history (plays and passes are both attributed). Also
+ * stamps the global event order (`seq`) and the pre-move trick — recorded here, where the true
+ * state is in hand, so a bot can later reconstruct the exact public context of ANY past decision
+ * without re-deriving trick-close rules (policy-likelihood belief, task 9).
+ */
 export function recordMove(history: PublicHistory, s: GameState, seat: Player, move: Move): void {
+  const seq = history.passes.length + history.plays.length;
   if (move.kind === "pass") {
-    if (s.trick) history.passes.push({ seat, top: s.trick.topCombo, topPlayer: s.trick.topPlayer });
+    if (s.trick) {
+      history.passes.push({ seat, top: s.trick.topCombo, topPlayer: s.trick.topPlayer, seq, trick: { ...s.trick } });
+    }
   } else {
-    history.plays.push({ seat, cards: move.cards, combo: move.combo });
+    history.plays.push({ seat, cards: move.cards, combo: move.combo, seq, trick: s.trick ? { ...s.trick } : null });
   }
 }
 

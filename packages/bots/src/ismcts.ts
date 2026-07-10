@@ -120,15 +120,20 @@ function powerKey(c: Combo): number {
   return 1000 + c.length * 100 + c.rank;
 }
 
+/** A combo's public signature — see `moveKey`. */
+export function comboKey(c: Combo): string {
+  return `${c.type}:${c.rank}:${c.length}`;
+}
+
 /**
  * The action's identity in the tree. Keyed by the PUBLIC signature (combo type:rank:length, or
  * "pass"), NOT the exact suits — so the "same" move from different determinizations maps to one node.
  * `legalMoves` emits each (type,rank,length) once per hand (ADR-0004), so keys don't collide.
+ * Exported: policy-belief.ts matches OBSERVED plays against hypothesized legal moves by this key.
  */
-function moveKey(m: Move): string {
+export function moveKey(m: Move): string {
   if (m.kind === "pass") return "pass";
-  const c = m.combo;
-  return `${c.type}:${c.rank}:${c.length}`;
+  return comboKey(m.combo);
 }
 
 type PlayMove = Extract<Move, { kind: "play" }>;

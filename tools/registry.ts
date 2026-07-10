@@ -17,6 +17,7 @@ import {
   staticLeaf,
   makeIsmctsBot,
   makeBeliefSampler,
+  makePolicyBeliefSampler,
   makeLearnedLeaf,
   type NamedBot,
 } from "@guandan/bots";
@@ -273,6 +274,25 @@ if (existsSync(POLICY_WEIGHTS_NOHIST)) {
         rollout: true,
         sampler: belief,
         rolloutBot: makePolicyBot(nnet, { zeroHistory: true }),
+      }),
+    };
+    // --- Task 9 (ADR-0016): policy-likelihood belief — the apprentice's OTHER job. Worlds are
+    // pooled per decision and weighted by how likely each hidden seat's observed plays/passes are
+    // under the nohist net (GIB/Skat-style likelihood conditioning; partner runs OUR policy →
+    // near-exact partner inference at ship time). Differs from -big ONLY in the world sampler.
+    // Gate: ismcts-rollout-plb vs ismcts-rollout-big.
+    REGISTRY["ismcts-rollout-plb"] = {
+      name: "ismcts-rollout-plb",
+      bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: makePolicyBeliefSampler(nnet) }),
+    };
+    // Same + the HARD tribute/resist pins as the base dealer (lane 2 composes with the soft
+    // likelihood weighting — constructive constraints the likelihood can't recover on its own).
+    REGISTRY["ismcts-rollout-plb-trib"] = {
+      name: "ismcts-rollout-plb-trib",
+      bot: makeIsmctsBot({
+        iterations: 600,
+        rollout: true,
+        sampler: makePolicyBeliefSampler(nnet, { useTributeInfo: true }),
       }),
     };
   }

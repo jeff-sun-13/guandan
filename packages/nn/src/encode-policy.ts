@@ -47,6 +47,19 @@ function addRankCounts(f: Float32Array, off: number, cards: Card[]): void {
   }
 }
 
+/**
+ * Rank-slot counts (RANK_SLOTS entries: ranks 2..A, small joker, big joker) of a card multiset.
+ * The obs layout's OWN-HAND block is exactly these counts at offset 0 — the ONLY obs features that
+ * depend on hidden cards. A belief scorer exploits that: encode the public context once with an
+ * empty hand (`encodeObs`), then treat these counts as first-layer column deltas per hypothesized
+ * hand (`towerForwardFromPre1` in policy.ts) instead of re-encoding per world (task 9).
+ */
+export function handRankCounts(cards: Card[]): Float32Array {
+  const f = new Float32Array(RANK_SLOTS);
+  addRankCounts(f, 0, cards);
+  return f;
+}
+
 // Observation layout (keep OBS_FEATURES in sync):
 //   15 own-hand rank counts
 //    1 level

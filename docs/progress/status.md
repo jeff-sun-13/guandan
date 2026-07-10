@@ -2,9 +2,28 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-09: night queue 4 read — budget 1800>1200 DECISIVE, endgame-in-rollouts DROPPED; box DELETE-SAFE; task 9 next_
+_Last updated: 2026-07-09 (late): task 9 BUILT (policy-likelihood belief, ADR-0016); gate launched on the box — do NOT delete the box until it's read_
 
-## 🏁 NIGHT QUEUE 4 COMPLETE (read 2026-07-09 over SSH) — box is DELETE-SAFE; task 9 is next
+## ▶ RUNNING NOW — task 9 gate (`tmux plbgate`, log `~/plb-gate.log`, launched 2026-07-10 ~04 UTC)
+**Task 9 is BUILT: policy-likelihood belief (ADR-0016, `packages/bots/src/policy-belief.ts`).**
+Determinized worlds are pooled per decision (K=64) and weighted by how likely each hidden seat's
+OBSERVED plays/passes are under the nohist apprentice — every past decision becomes evidence,
+scored by a calibrated model of champion play (GIB/Skat-style). Enablers: `recordMove` now stamps
+`seq` + pre-move trick on every event (exact past-context reconstruction, no rule replay); the
+likelihood factorizes per seat (hand at any past decision = current hypothesized hand + cards since
+played); public obs parts are encoded once per decision, per-world hands enter as first-layer column
+deltas (`towerForwardFromPre1`). Calibration probe (`tools/probe-plb.ts`): ~20 ms/decision (≈free at
+600 iters, s/move identical to champion), ESS p50≈17/64 p10≈4 (sharpened, not degenerate). 189
+tests green incl. exact-reconstruction-vs-true-trace; evald smoke ran end-to-end.
+`tools/remote/run-plb-gate.sh` (both logs in box-sync's pull list), sequential |z|≥3:
+1. **HEADLINE: `ismcts-rollout-plb` vs `ismcts-rollout-big`** — differ ONLY in world sampler, up to
+   1600 deals, seeds 46001+. Passes ⇒ new champion sampler + regenerate expert-iteration data with
+   it (ADR-0015 loop compounds). Null ⇒ probe maxEvents/power/pool before shelving (ADR-0016).
+2. **Secondary: `-plb-trib` vs `-plb`** — do the hard tribute pins still add on top? Seeds 47001+,
+   ≤1200 deals.
+**Do NOT delete the box while this runs.** After both are read, the box is delete-safe again.
+
+## 🏁 NIGHT QUEUE 4 COMPLETE (read 2026-07-09 over SSH) — budget + endgame gates resolved
 `tools/remote/run-queue-4.sh` finished (`NIGHTQ_COMPLETE`, ~21:09 UTC 2026-07-09; full log
 `box-results/night-queue.log` — final copy scp'd; the overnight box-sync copy was mid-run):
 1. **Budget 1800v1200 EXTENDED: DECISIVE — 1800 iters beats 1200.** Sequential stop at 600 deals
@@ -19,9 +38,9 @@ _Last updated: 2026-07-09: night queue 4 read — budget 1800>1200 DECISIVE, end
    **+0.017 pts/deal, z≈0.58 over 2000 paired deals.** Per the pre-registered adopt-or-drop:
    `endgameSolve` stays OFF in the champion's rollouts. (The solver itself remains built +
    oracle-verified; decision-time/analysis uses are still possible later.)
-**Box state: tmux empty, load 0.00, everything collected → the box is DELETE-SAFE. Human: delete
-it in the Hetzner console to stop billing.** Task 9 is a dev-machine build; re-provision a box
-later for its gates (~10 min via `tools/remote/setup.sh`).
+**Box state: tmux empty, load 0.00, everything collected → was briefly delete-safe, but the same
+evening the task-9 gate was launched on it (see RUNNING NOW above) — hold deletion until that's
+read.**
 
 ## 🏁 GATE 2 CLOSED FOR NOW (2026-07-08) — apprentice-as-rollout = PARITY at ~10× cost → PARKED; task 9 is next
 The Gate 2b extension (`round1c`, 1200 deals, seeds 43001+) finished: **+0.0225 pts/deal, z=0.55.**
@@ -264,8 +283,9 @@ EXACT policy → near-exact partner inference — the principled ADR-0011 reviva
    Gate 1 PASSED (z=12.98; nohist variant z=15.25 — distillation works, strongest fast bot).
    Gate 2 after both fixes (nohist+temperature) pooled to parity (z≈0.94 @1600 deals) at ~10×
    rollout cost → closed under the current net. Reopen only with a stronger net (round-2 data).
-9. Policy-likelihood belief with EXACT partner inference (consumes task 8's policy net; plays ✅
-   recorded). THE principled ADR-0011 revival.
+9. ◑ Policy-likelihood belief (ADR-0016) — BUILT + tested 2026-07-09 (`policy-belief.ts`,
+   `ismcts-rollout-plb`); the headline gate vs the champion sampler is RUNNING on the box.
+   THE principled ADR-0011 revival, consuming task 8's nohist net.
 10. ◑ Endgame exact solver ✅ built + oracle-verified; `endgameSolve`-in-rollouts RESOLVED NULL
     2026-07-09 (pooled +0.017, z≈0.58 @2000 deals) → stays OFF in the champion. Designed pair
     conventions still need the human's conventions — ASK HIM.

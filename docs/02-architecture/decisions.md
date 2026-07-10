@@ -3,6 +3,47 @@
 Append-only. Newest at top. Each entry: date, decision, why, alternatives, status.
 
 ---
+## ADR-0016 — Belief = policy-likelihood weighting of determinized worlds (the apprentice's second job)
+**Date:** 2026-07-09 · **Status:** Accepted (built + tested; gate running on the box)
+**Context:** The champion's belief is a weak instrument: 6 candidate worlds reweighted by ONE
+hand-coded binary signal (current-trick pass plausibility). Cross-trick extensions of that signal
+measured neutral-to-harmful (ADR-0011 parked), and the diagnosis stood: the *sampling vehicle*
+cannot represent sharp per-player inference. Meanwhile task 8 banked a policy net that predicts the
+champion's play from a seat's observation (nohist variant: CE equal to the full net, standalone
+z=15.25 vs v1) — i.e., we now own a calibrated model of "how would this seat play if it held X?".
+That is exactly the likelihood a principled belief needs (GIB's biddable-hands trick; Skat solvers;
+`06-prior-art/our-edge.md`). The partner runs OUR code, so at ship time partner inference via this
+model approaches exactness — the ADR-0011 revival, done right.
+**Decision:** Per root decision, build a POOL of K base-sampled worlds and weight each by
+`Σ_seat Σ_decision log P_net(observed move | seat's reconstructed hand in this world)`; ISMCTS
+iterations then draw worlds from the pool ∝ weight (importance resampling; `policy-belief.ts`).
+Three structural choices make it exact and cheap:
+1. **Exact reconstruction, no rule replay:** `recordMove` now stamps each play/pass with a global
+   `seq` + the pre-move trick (it holds the true state — recording beats re-deriving trick-close
+   rules). A seat's hand at any past decision = its current hypothesized hand + the cards it has
+   since played (per-seat attribution, ADR-0014).
+2. **Likelihood factorizes:** the net conditions only on (own hand, public context), so the public
+   part of every past decision is world-independent — encoded ONCE per root decision, with only the
+   15 own-hand slots applied per world as first-layer column deltas (`towerForwardFromPre1`, ~2.5×
+   cheaper than a full obs-tower pass; act-tower embeddings cached per decision).
+3. **Never hard-kill a world:** per-decision likelihoods are ε-mixed with uniform over the k legal
+   moves (default ε=0.15) — the net is a model, not an oracle. Weights are log-accumulated and
+   max-subtracted; a `power` exponent can flatten a degenerate pool (unneeded so far: measured ESS
+   p50 ≈ 17/64, p10 ≈ 4 — sharpened but healthy; ~20 ms/decision ≈ free next to 600-iter search).
+**Consequences:** the pass-plausibility lane is superseded inside the new sampler (subsumed by pass
+likelihoods, calibrated); the tribute-pin lane survives as the base dealer (`useTributeInfo` —
+constructive constraints compose with soft weighting). Pool draws repeat worlds across iterations
+(vs fresh-per-iteration before) — accepted; refreshable via `refresh` if it ever measures as a cost.
+**Gate (pre-registered):** `ismcts-rollout-plb` vs `ismcts-rollout-big` (differ only in sampler),
+paired harness, sequential to |z|≥3 or 1600 deals; secondary `plb-trib` vs `plb` for the pin base.
+**Alternatives:** score fresh worlds every iteration (the old vehicle) — ~7 ms × 600 iters/move,
+rejected on cost; thread simulated history into rollout observations (the "invasive rewrite") —
+still open, orthogonal; hand-tuned likelihoods — the net is measurably better calibrated than
+anything we'd hand-write. **Revisit:** if the gate is null, probe `maxEvents`/`power`/`pool` and a
+round-2 net before shelving; if it passes, regenerate expert-iteration data WITH this sampler
+(compounding loop, ADR-0015 (d)).
+
+---
 ## ADR-0015 — Learned route runs through EXPERT ITERATION (policy from search stats), not value-leaf distillation
 **Date:** 2026-07-06 · **Status:** Accepted (round 1 running; each round gated per ADR-0013)
 **Context:** ADR-0012's Stage 1 (distill the rollout leaf's VALUE from game outcomes) was built,

@@ -119,6 +119,15 @@ export interface PassEvent {
   seat: Player;
   top: Combo;
   topPlayer: Player;
+  /**
+   * Global 0-based order of this event among ALL recorded plays+passes this deal. Plays and passes
+   * live in separate arrays, so without this their interleaving is lost — and exact interleaving is
+   * what lets a bot reconstruct the full public state at any past decision (policy-likelihood
+   * belief, task 9). Optional: absent on histories recorded before 2026-07-09.
+   */
+  seq?: number;
+  /** The trick as the passer faced it (adds leader + passes-so-far to top/topPlayer above). */
+  trick?: Trick;
 }
 
 /** One play event in the public record: `seat` faced everyone with `cards` (as `combo`). */
@@ -126,6 +135,10 @@ export interface PlayEvent {
   seat: Player;
   cards: Card[];
   combo: Combo;
+  /** Global event order — see PassEvent.seq. */
+  seq?: number;
+  /** The trick BEFORE this play; `null` = this play LED a fresh trick. Absent on old histories. */
+  trick?: Trick | null;
 }
 
 /**

@@ -11,7 +11,14 @@ export {
   mlpToJSON,
   mlpFromJSON,
 } from "./mlp";
-export { encodeObs, encodeAction, OBS_FEATURES, ACT_FEATURES, OBS_HISTORY_RANGES } from "./encode-policy";
+export {
+  encodeObs,
+  encodeAction,
+  handRankCounts,
+  OBS_FEATURES,
+  ACT_FEATURES,
+  OBS_HISTORY_RANGES,
+} from "./encode-policy";
 export {
   type PolicyNet,
   type PolicyExample,
@@ -27,4 +34,6 @@ export {
   policyToJSON,
   policyFromJSON,
   towerForward,
+  towerPre1,
+  towerForwardFromPre1,
 } from "./policy";
