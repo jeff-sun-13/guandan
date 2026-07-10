@@ -4,7 +4,7 @@
 
 _Last updated: 2026-07-10: task 9 gate FAILED (z=−3.66) — diagnosis queue running on the box (mechanism vs signal); do NOT delete the box until it's read_
 
-## ▶ RUNNING NOW — task 9 DIAGNOSIS (`tmux plbdiag`, log `~/plb-diag.log`, launched 2026-07-10 ~16 UTC)
+## ▶ RUNNING NOW — task 9 DIAGNOSIS (`tmux plbdiag`, log `~/plb-diag.log`; verified live over SSH 2026-07-10 23:01 UTC — arm 1 (plb-u) began 22:45 UTC, so all 3 arms ETA ~06–08 UTC 2026-07-11)
 **The task 9 gate FAILED (read 2026-07-10 morning, `box-results/plb-gate.log`):**
 - **HEADLINE: `ismcts-rollout-plb` vs `-big`: −0.1325 pts/deal, z=−3.66 @1400 (sequential stop).**
   The policy-likelihood belief AS-BUILT makes the champion decisively worse.
