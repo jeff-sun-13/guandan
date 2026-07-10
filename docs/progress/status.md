@@ -2,26 +2,31 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-09 (late): task 9 BUILT (policy-likelihood belief, ADR-0016); gate launched on the box — do NOT delete the box until it's read_
+_Last updated: 2026-07-10: task 9 gate FAILED (z=−3.66) — diagnosis queue running on the box (mechanism vs signal); do NOT delete the box until it's read_
 
-## ▶ RUNNING NOW — task 9 gate (`tmux plbgate`, log `~/plb-gate.log`, launched 2026-07-10 ~04 UTC)
-**Task 9 is BUILT: policy-likelihood belief (ADR-0016, `packages/bots/src/policy-belief.ts`).**
-Determinized worlds are pooled per decision (K=64) and weighted by how likely each hidden seat's
-OBSERVED plays/passes are under the nohist apprentice — every past decision becomes evidence,
-scored by a calibrated model of champion play (GIB/Skat-style). Enablers: `recordMove` now stamps
-`seq` + pre-move trick on every event (exact past-context reconstruction, no rule replay); the
-likelihood factorizes per seat (hand at any past decision = current hypothesized hand + cards since
-played); public obs parts are encoded once per decision, per-world hands enter as first-layer column
-deltas (`towerForwardFromPre1`). Calibration probe (`tools/probe-plb.ts`): ~20 ms/decision (≈free at
-600 iters, s/move identical to champion), ESS p50≈17/64 p10≈4 (sharpened, not degenerate). 189
-tests green incl. exact-reconstruction-vs-true-trace; evald smoke ran end-to-end.
-`tools/remote/run-plb-gate.sh` (both logs in box-sync's pull list), sequential |z|≥3:
-1. **HEADLINE: `ismcts-rollout-plb` vs `ismcts-rollout-big`** — differ ONLY in world sampler, up to
-   1600 deals, seeds 46001+. Passes ⇒ new champion sampler + regenerate expert-iteration data with
-   it (ADR-0015 loop compounds). Null ⇒ probe maxEvents/power/pool before shelving (ADR-0016).
-2. **Secondary: `-plb-trib` vs `-plb`** — do the hard tribute pins still add on top? Seeds 47001+,
-   ≤1200 deals.
-**Do NOT delete the box while this runs.** After both are read, the box is delete-safe again.
+## ▶ RUNNING NOW — task 9 DIAGNOSIS (`tmux plbdiag`, log `~/plb-diag.log`, launched 2026-07-10 ~16 UTC)
+**The task 9 gate FAILED (read 2026-07-10 morning, `box-results/plb-gate.log`):**
+- **HEADLINE: `ismcts-rollout-plb` vs `-big`: −0.1325 pts/deal, z=−3.66 @1400 (sequential stop).**
+  The policy-likelihood belief AS-BUILT makes the champion decisively worse.
+- Secondary (`-plb-trib` vs `-plb`): +0.012, z=0.35 @1200 — pins add nothing on top (consistent
+  with the old trib-lane pooled ≈ null).
+**Why not park immediately:** the challenger bundled TWO changes — the likelihood SIGNAL and a
+MECHANISM switch (~600 fresh worlds/decision → one reused 64-world pool, ESS p50 ≈ 17). Either
+could carry the −0.13. `tools/remote/run-plb-diag.sh` separates them (all vs `-big`, ≤1200 deals
+each, |z|≥3 sequential, ~2.5 h each):
+1. **`plb-u`** (seeds 48001+) — same pool, likelihood OFF (power=0 → uniform weights). Reads the
+   pool-mechanism cost alone.
+2. **`plb-r`** (seeds 49001+) — likelihood ON, pool rebuilt every 150 draws (diversity back).
+3. **`plb-soft`** (seeds 50001+) — flattened posterior (power .5, mix .25, window 24; ESS p50
+   48/64 vs 17/64 at defaults).
+**Decision tree:** plb-u ≈ −0.13 ⇒ the POOL is the harm → plb-r is the key read (adopt refresh if
+it recovers). plb-u ≈ 0 ⇒ the SIGNAL is the harm → plb-soft is the key read; if it's also negative
+⇒ PARK policy-likelihood belief under the current net (ADR-0016), revisit with a round-2 net.
+**Do NOT delete the box while this runs.** After it's read, the box is delete-safe again.
+**Build state (2026-07-09):** task 9 is fully built + tested (`packages/bots/src/policy-belief.ts`,
+ADR-0016): exact past-decision reconstruction via `recordMove` seq/trick stamps, per-seat
+factorized likelihood, first-layer delta forward (~20 ms/decision — search speed unchanged),
+`ismcts-rollout-plb*` variants registered, 189 tests green, calibration probe `tools/probe-plb.ts`.
 
 ## 🏁 NIGHT QUEUE 4 COMPLETE (read 2026-07-09 over SSH) — budget + endgame gates resolved
 `tools/remote/run-queue-4.sh` finished (`NIGHTQ_COMPLETE`, ~21:09 UTC 2026-07-09; full log
@@ -283,9 +288,9 @@ EXACT policy → near-exact partner inference — the principled ADR-0011 reviva
    Gate 1 PASSED (z=12.98; nohist variant z=15.25 — distillation works, strongest fast bot).
    Gate 2 after both fixes (nohist+temperature) pooled to parity (z≈0.94 @1600 deals) at ~10×
    rollout cost → closed under the current net. Reopen only with a stronger net (round-2 data).
-9. ◑ Policy-likelihood belief (ADR-0016) — BUILT + tested 2026-07-09 (`policy-belief.ts`,
-   `ismcts-rollout-plb`); the headline gate vs the champion sampler is RUNNING on the box.
-   THE principled ADR-0011 revival, consuming task 8's nohist net.
+9. ◑ Policy-likelihood belief (ADR-0016) — BUILT + tested 2026-07-09; **gate FAILED 2026-07-10
+   (−0.1325, z=−3.66 @1400)**. Diagnosis running: pool-mechanism cost vs likelihood-signal harm
+   (see RUNNING NOW). Park only if all three diagnosis arms read negative.
 10. ◑ Endgame exact solver ✅ built + oracle-verified; `endgameSolve`-in-rollouts RESOLVED NULL
     2026-07-09 (pooled +0.017, z≈0.58 @2000 deals) → stays OFF in the champion. Designed pair
     conventions still need the human's conventions — ASK HIM.

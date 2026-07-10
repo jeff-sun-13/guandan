@@ -4,7 +4,12 @@ Append-only. Newest at top. Each entry: date, decision, why, alternatives, statu
 
 ---
 ## ADR-0016 — Belief = policy-likelihood weighting of determinized worlds (the apprentice's second job)
-**Date:** 2026-07-09 · **Status:** Accepted (built + tested; gate running on the box)
+**Date:** 2026-07-09 · **Status:** Built; **GATE FAILED 2026-07-10** (−0.1325 pts/deal, z=−3.66
+@1400 — the pooled likelihood sampler makes the champion WORSE; tribute pins on top read null,
++0.012 z=0.35 @1200). Diagnosis running per the pre-registered revisit: the challenger bundled the
+likelihood SIGNAL with a fresh-worlds→reused-pool MECHANISM switch (ESS p50 ≈ 17 effective worlds
+vs ~600 fresh before) — `run-plb-diag.sh` separates them (plb-u: pool+uniform weights; plb-r:
+likelihood+refresh; plb-soft: flattened posterior). Park only if all three read negative.
 **Context:** The champion's belief is a weak instrument: 6 candidate worlds reweighted by ONE
 hand-coded binary signal (current-trick pass plausibility). Cross-trick extensions of that signal
 measured neutral-to-harmful (ADR-0011 parked), and the diagnosis stood: the *sampling vehicle*

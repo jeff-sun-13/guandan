@@ -295,6 +295,31 @@ if (existsSync(POLICY_WEIGHTS_NOHIST)) {
         sampler: makePolicyBeliefSampler(nnet, { useTributeInfo: true }),
       }),
     };
+    // --- ADR-0016 gate FAILED (−0.1325 pts/deal, z=−3.66 @1400, 2026-07-10) → diagnosis. The
+    // challenger bundled TWO changes: the likelihood SIGNAL and a structural switch from ~600
+    // fresh worlds/decision to one reused 64-world pool (ESS p50 ≈ 17). Separate them:
+    // plb-u: IDENTICAL pool machinery, likelihood ignored (power=0 → uniform weights over the same
+    // 64 pooled worlds). vs -big isolates the pool-mechanism cost (world-diversity loss).
+    REGISTRY["ismcts-rollout-plb-u"] = {
+      name: "ismcts-rollout-plb-u",
+      bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: makePolicyBeliefSampler(nnet, { power: 0 }) }),
+    };
+    // plb-r: likelihood ON, pool REBUILT every 150 draws (≈4×64 worlds/decision) — buys diversity
+    // back at ~4× the (still ~free) pool cost.
+    REGISTRY["ismcts-rollout-plb-r"] = {
+      name: "ismcts-rollout-plb-r",
+      bot: makeIsmctsBot({ iterations: 600, rollout: true, sampler: makePolicyBeliefSampler(nnet, { refresh: 150 }) }),
+    };
+    // plb-soft: gentler posterior — power .5, mix .25, evidence window 24. Probe: ESS p50 48/64,
+    // p10 23 (vs 17/4 at defaults). Tests whether a lighter touch of the same signal helps.
+    REGISTRY["ismcts-rollout-plb-soft"] = {
+      name: "ismcts-rollout-plb-soft",
+      bot: makeIsmctsBot({
+        iterations: 600,
+        rollout: true,
+        sampler: makePolicyBeliefSampler(nnet, { power: 0.5, mix: 0.25, maxEvents: 24 }),
+      }),
+    };
   }
 }
 

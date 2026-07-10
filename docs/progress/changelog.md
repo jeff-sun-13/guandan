@@ -4,6 +4,20 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-10 — Task 9 gate FAILED (−0.1325, z=−3.66 @1400); diagnosis queue launched (mechanism vs signal)
+Read overnight gate off the box (`box-results/plb-gate.log`, PLBGATE_COMPLETE):
+- **`ismcts-rollout-plb` vs `-big`: −0.1325 pts/deal, z=−3.66, sequential stop @1400 deals** — the
+  pooled policy-likelihood sampler makes the champion decisively WORSE as-built.
+- Secondary `-plb-trib` vs `-plb`: +0.012, z=0.35 @1200 — tribute pins add nothing on top.
+- **Not parked yet — the gate conflated two changes** (pre-registered revisit, ADR-0016): the
+  likelihood signal itself, and reused-64-world pools replacing ~600 fresh worlds/decision
+  (median effective worlds ≈ 17 after weighting). Launched `tools/remote/run-plb-diag.sh`
+  (tmux `plbdiag`, in box-sync's pull list): plb-u (pool + uniform weights → mechanism cost),
+  plb-r (likelihood + refresh-150 → diversity back), plb-soft (power .5, mix .25, window 24 —
+  probe reads ESS p50 48/64 vs 17/64 at defaults). All vs `-big`, seeds 48001+/49001+/50001+,
+  ≤1200 deals each. Decision tree in status.md; park only if all three read negative.
+
+---
 ## 2026-07-09 (late) — Task 9 BUILT: policy-likelihood belief (ADR-0016); gate launched on the box
 The apprentice's second job, done the principled way (GIB/Skat likelihood conditioning):
 - **`packages/bots/src/policy-belief.ts`** — per root decision, pool K=64 base-sampled worlds and
