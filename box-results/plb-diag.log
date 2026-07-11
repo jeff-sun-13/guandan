@@ -1,0 +1,68 @@
+
+===== [2026-07-10 22:45:39] diag 1: pooled worlds, likelihood OFF (mechanism cost) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-plb-u ismcts-rollout-big 200 --auto --max-deals=1200 --seed=48001
+$ tsx evald.ts ismcts-rollout-plb-u ismcts-rollout-big 200 --auto --max-deals=1200 --seed=48001
+
+Paired-deal eval: ismcts-rollout-plb-u vs ismcts-rollout-big — batch 200, seeds from 48001, sequential until |z|≥3 or 1200 deals
+
+  [200 deals] edge +0.0100 pts/deal, z=0.10
+  [400 deals] edge -0.1025 pts/deal, z=-1.50
+  [600 deals] edge -0.1075 pts/deal, z=-1.90
+  [800 deals] edge -0.0612 pts/deal, z=-1.26
+  [1000 deals] edge -0.0370 pts/deal, z=-0.85
+  [1200 deals] edge -0.0567 pts/deal, z=-1.42
+
+ismcts-rollout-plb-u  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 1200   diverging (d≠0): 875
+  edge (ismcts-rollout-plb-u): -0.0567 deal-value pts/deal  (SE 0.0399, z=-1.42)
+  d histogram: -6:27  -5:43  -4:127  -3:35  -2:105  -1:114  0:325  +1:120  +2:86  +3:61  +4:98  +5:43  +6:16
+  → inconclusive so far (|z| < 1.96)
+
+(1200 paired deals = 2400 games in 9562.2s)
+
+
+===== [2026-07-11 01:25:03] diag 2: likelihood + pool refresh every 150 draws (diversity restored) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-plb-r ismcts-rollout-big 200 --auto --max-deals=1200 --seed=49001
+$ tsx evald.ts ismcts-rollout-plb-r ismcts-rollout-big 200 --auto --max-deals=1200 --seed=49001
+
+Paired-deal eval: ismcts-rollout-plb-r vs ismcts-rollout-big — batch 200, seeds from 49001, sequential until |z|≥3 or 1200 deals
+
+  [200 deals] edge +0.0075 pts/deal, z=0.09
+  [400 deals] edge -0.1187 pts/deal, z=-1.80
+  [600 deals] edge -0.1033 pts/deal, z=-1.89
+  [800 deals] edge -0.1194 pts/deal, z=-2.53
+  [1000 deals] edge -0.1075 pts/deal, z=-2.55
+  [1200 deals] edge -0.1117 pts/deal, z=-2.92
+
+ismcts-rollout-plb-r  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 1200   diverging (d≠0): 885
+  edge (ismcts-rollout-plb-r): -0.1117 deal-value pts/deal  (SE 0.0382, z=-2.92)
+  d histogram: -6:25  -5:34  -4:123  -3:51  -2:113  -1:143  0:315  +1:113  +2:90  +3:51  +4:99  +5:34  +6:9
+  → ismcts-rollout-big likely stronger (z ≤ −1.96, single-look 95%; keep running if sequential)
+
+(1200 paired deals = 2400 games in 11679.5s)
+
+
+===== [2026-07-11 04:39:44] diag 3: gentler posterior (power .5, mix .25, window 24) =====
+$ pnpm --filter @guandan/tools evald ismcts-rollout-plb-soft ismcts-rollout-big 200 --auto --max-deals=1200 --seed=50001
+$ tsx evald.ts ismcts-rollout-plb-soft ismcts-rollout-big 200 --auto --max-deals=1200 --seed=50001
+
+Paired-deal eval: ismcts-rollout-plb-soft vs ismcts-rollout-big — batch 200, seeds from 50001, sequential until |z|≥3 or 1200 deals
+
+  [200 deals] edge -0.2575 pts/deal, z=-2.59
+  [400 deals] edge -0.1425 pts/deal, z=-2.06
+  [600 deals] edge -0.0450 pts/deal, z=-0.81
+  [800 deals] edge -0.0425 pts/deal, z=-0.87
+  [1000 deals] edge -0.0590 pts/deal, z=-1.38
+  [1200 deals] edge -0.0446 pts/deal, z=-1.15
+
+ismcts-rollout-plb-soft  vs  ismcts-rollout-big   (paired deals — same deal, seats swapped, common random numbers)
+  paired deals: 1200   diverging (d≠0): 878
+  edge (ismcts-rollout-plb-soft): -0.0446 deal-value pts/deal  (SE 0.0386, z=-1.15)
+  d histogram: -6:23  -5:36  -4:96  -3:57  -2:122  -1:139  0:322  +1:100  +2:94  +3:62  +4:96  +5:27  +6:26
+  → inconclusive so far (|z| < 1.96)
+
+(1200 paired deals = 2400 games in 9127.0s)
+
+
+PLBDIAG_COMPLETE
