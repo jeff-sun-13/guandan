@@ -6,8 +6,11 @@
 # Every step is best-effort: a deleted/unreachable box must NOT fail the workflow.
 name: box-sync
 on:
-  schedule:
-    - cron: "17 */6 * * *"
+  # Schedule DISABLED 2026-07-14: the box was deleted (task-9 diagnosis collected), and each run
+  # commits a noise "box unreachable" commit (the status timestamp always changes). Re-enable the
+  # cron when a new box goes up — and update BOX below with its IP (box-exec.yml too).
+  # schedule:
+  #   - cron: "17 */6 * * *"
   workflow_dispatch:
 permissions:
   contents: write

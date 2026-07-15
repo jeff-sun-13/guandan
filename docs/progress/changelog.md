@@ -4,6 +4,27 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-14 — Task 9 diagnosis read: all three arms NEGATIVE → policy-likelihood belief PARKED; box deleted
+Diagnosis finished on the box 2026-07-11 ~07:12 UTC (`PLBDIAG_COMPLETE`); the 6-hourly box-sync
+captured `box-results/plb-diag.log` before the human deleted the box 2026-07-14 (today's sync
+confirms it unreachable — nothing was lost). All arms vs `-big`, ≤1200 deals, no sequential stop:
+- **plb-u** (pool, likelihood OFF — mechanism cost alone): **−0.0567, z=−1.42 @1200.** Between the
+  decision tree's branches: the reused-64-world pool alone trends ~−0.06 (ns) — part, not all, of
+  the original −0.13.
+- **plb-r** (likelihood ON + refresh-150 — diversity restored): **−0.1117, z=−2.92 @1200.**
+  Essentially replicates the original failure; refresh does NOT rescue it → not adopted.
+- **plb-soft** (power .5, mix .25, window 24): **−0.0446, z=−1.15 @1200.** Weaker signal → less
+  harm, back toward the pool-only level, still negative.
+Reading: pool cost (~−0.05, ns) + a signal cost that scales with signal strength; no arm recovers
+to parity. **Per the pre-registered rule (all three negative) → PARKED under the current net**
+(ADR-0016 status updated). Code stays built + tested. Reopen paths: round-2 net, or a fresh-world
+likelihood vehicle (the signal was only ever read through pooled worlds — the fresh-world variant
+was rejected on cost, never measured; recorded as the honest caveat).
+Champion unchanged: `ismcts-rollout-huge`. Next big lever: **round-2 expert iteration** (reopens
+tasks 8 AND 9 with a stronger net; needs a fresh box). Still on the human: pair conventions
+(task 10), integration latency choice, round-2 go/no-go.
+
+---
 ## 2026-07-10 — Task 9 gate FAILED (−0.1325, z=−3.66 @1400); diagnosis queue launched (mechanism vs signal)
 Read overnight gate off the box (`box-results/plb-gate.log`, PLBGATE_COMPLETE):
 - **`ismcts-rollout-plb` vs `-big`: −0.1325 pts/deal, z=−3.66, sequential stop @1400 deals** — the

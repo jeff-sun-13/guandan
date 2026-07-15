@@ -2,31 +2,39 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-10: task 9 gate FAILED (z=−3.66) — diagnosis queue running on the box (mechanism vs signal); do NOT delete the box until it's read_
+_Last updated: 2026-07-14: task 9 diagnosis read — ALL THREE ARMS NEGATIVE → policy-likelihood
+belief PARKED under the current net (ADR-0016). Box DELETED by the human; nothing running anywhere._
 
-## ▶ RUNNING NOW — task 9 DIAGNOSIS (`tmux plbdiag`, log `~/plb-diag.log`; verified live over SSH 2026-07-10 23:01 UTC — arm 1 (plb-u) began 22:45 UTC, so all 3 arms ETA ~06–08 UTC 2026-07-11)
-**The task 9 gate FAILED (read 2026-07-10 morning, `box-results/plb-gate.log`):**
-- **HEADLINE: `ismcts-rollout-plb` vs `-big`: −0.1325 pts/deal, z=−3.66 @1400 (sequential stop).**
-  The policy-likelihood belief AS-BUILT makes the champion decisively worse.
-- Secondary (`-plb-trib` vs `-plb`): +0.012, z=0.35 @1200 — pins add nothing on top (consistent
-  with the old trib-lane pooled ≈ null).
-**Why not park immediately:** the challenger bundled TWO changes — the likelihood SIGNAL and a
-MECHANISM switch (~600 fresh worlds/decision → one reused 64-world pool, ESS p50 ≈ 17). Either
-could carry the −0.13. `tools/remote/run-plb-diag.sh` separates them (all vs `-big`, ≤1200 deals
-each, |z|≥3 sequential, ~2.5 h each):
-1. **`plb-u`** (seeds 48001+) — same pool, likelihood OFF (power=0 → uniform weights). Reads the
-   pool-mechanism cost alone.
-2. **`plb-r`** (seeds 49001+) — likelihood ON, pool rebuilt every 150 draws (diversity back).
-3. **`plb-soft`** (seeds 50001+) — flattened posterior (power .5, mix .25, window 24; ESS p50
-   48/64 vs 17/64 at defaults).
-**Decision tree:** plb-u ≈ −0.13 ⇒ the POOL is the harm → plb-r is the key read (adopt refresh if
-it recovers). plb-u ≈ 0 ⇒ the SIGNAL is the harm → plb-soft is the key read; if it's also negative
-⇒ PARK policy-likelihood belief under the current net (ADR-0016), revisit with a round-2 net.
-**Do NOT delete the box while this runs.** After it's read, the box is delete-safe again.
-**Build state (2026-07-09):** task 9 is fully built + tested (`packages/bots/src/policy-belief.ts`,
-ADR-0016): exact past-decision reconstruction via `recordMove` seq/trick stamps, per-seat
-factorized likelihood, first-layer delta forward (~20 ms/decision — search speed unchanged),
-`ismcts-rollout-plb*` variants registered, 189 tests green, calibration probe `tools/probe-plb.ts`.
+## 🏁 TASK 9 DIAGNOSIS READ (2026-07-14) — all arms negative → PARKED; box DELETED, results all collected
+The 3-arm diagnosis finished on the box 2026-07-11 ~07:12 UTC (`PLBDIAG_COMPLETE`); the box-sync
+bridge captured the full log (`box-results/plb-diag.log`) before the human deleted the box
+2026-07-14. **No compute is running anywhere now.** All arms vs `ismcts-rollout-big`, ≤1200 deals,
+none hit a sequential |z|≥3 stop:
+1. **`plb-u`** (pool, likelihood OFF → mechanism cost alone): **−0.0567 pts/deal, z=−1.42 @1200.**
+   Landed BETWEEN the tree's branches — the reused-64-world pool alone trends ~−0.06 (ns), so the
+   mechanism carries part but not all of the original −0.13.
+2. **`plb-r`** (likelihood ON, pool refreshed every 150 draws): **−0.1117, z=−2.92 @1200.**
+   The key read: restoring pool diversity does NOT recover — this essentially replicates the
+   original gate failure. Refresh is NOT adopted.
+3. **`plb-soft`** (flattened posterior: power .5, mix .25, window 24): **−0.0446, z=−1.15 @1200.**
+   Weakening the signal pulls the harm back toward the pool-only level — still negative.
+**Coherent reading:** harm ≈ pool cost (~−0.05, ns) + a signal cost that scales with signal
+strength (soft −0.04 → full-with-refresh −0.11 → as-built −0.13). No configuration recovers to
+parity; every arm is negative. **Per the pre-registered rule ("park only if all three read
+negative"): policy-likelihood belief is PARKED under the current net** (ADR-0016 status updated).
+The code stays built + tested (189 green); reopen paths: a round-2 net (stronger likelihoods), or
+a cheaper fresh-world scorer (the pool existed only because scoring ~600 fresh worlds/decision was
+rejected on cost — the signal was never read through a fresh-world vehicle; honest caveat).
+**Champion unchanged: `ismcts-rollout-huge` (1800 iters, ~2 s/move).**
+**What's next (in rough order):**
+- **Round-2 expert iteration** — the one lever that reopens BOTH parked ideas (task 8's
+  apprentice-as-rollout and task 9's belief): regenerate search data with the current champion
+  (per-type candidates per task-4 note), retrain, re-gate. Needs a fresh box
+  (`tools/remote/setup.sh`, ~10 min).
+- **Task 10 pair conventions** — still needs the human's conventions (ASK HIM).
+- **Human decisions outstanding:** latency at integration (2 s vs 1 s/move for −0.17 pts/deal);
+  go/no-go on the round-2 box spend.
+- Deprioritized: tribute-lane resolution (~5k deals), Stage-2 RL (round-2 EI comes first).
 
 ## 🏁 NIGHT QUEUE 4 COMPLETE (read 2026-07-09 over SSH) — budget + endgame gates resolved
 `tools/remote/run-queue-4.sh` finished (`NIGHTQ_COMPLETE`, ~21:09 UTC 2026-07-09; full log
@@ -288,9 +296,10 @@ EXACT policy → near-exact partner inference — the principled ADR-0011 reviva
    Gate 1 PASSED (z=12.98; nohist variant z=15.25 — distillation works, strongest fast bot).
    Gate 2 after both fixes (nohist+temperature) pooled to parity (z≈0.94 @1600 deals) at ~10×
    rollout cost → closed under the current net. Reopen only with a stronger net (round-2 data).
-9. ◑ Policy-likelihood belief (ADR-0016) — BUILT + tested 2026-07-09; **gate FAILED 2026-07-10
-   (−0.1325, z=−3.66 @1400)**. Diagnosis running: pool-mechanism cost vs likelihood-signal harm
-   (see RUNNING NOW). Park only if all three diagnosis arms read negative.
+9. ✅→PARKED Policy-likelihood belief (ADR-0016) — built + tested 2026-07-09; gate FAILED
+   2026-07-10 (−0.1325, z=−3.66 @1400); **diagnosis read 2026-07-14: all three arms negative
+   (plb-u −0.06 z=−1.42; plb-r −0.11 z=−2.92; plb-soft −0.04 z=−1.15) → PARKED per
+   pre-registration.** Reopen with a round-2 net or a fresh-world likelihood vehicle.
 10. ◑ Endgame exact solver ✅ built + oracle-verified; `endgameSolve`-in-rollouts RESOLVED NULL
     2026-07-09 (pooled +0.017, z≈0.58 @2000 deals) → stays OFF in the champion. Designed pair
     conventions still need the human's conventions — ASK HIM.
@@ -301,8 +310,11 @@ preference at integration time (2 s vs 1 s/move for −0.17 pts/deal).
 
 ## Milestone: **M1 complete (playable web app vs 3 heuristic bots). Prior-art documented. Repo now under git + pushed to GitHub (github.com/jeff-sun-13/guandan) and remote eval compute is LIVE (Hetzner box, ADR-0009). CHAMPION = `ismcts-rollout-huge` (1800 iters) by a hair, but the full budget-saturation curve (2026-06-29, overnight on Hetzner) shows **strength PLATEAUS ~1200–1800 iters** — Elo by budget: 150→1193, 300→1473, 600→1662, 1200→1842, 1800→1877; 3600 vs 1800 inconclusive (58%), 7200 vs 3600 no gain. **`1200` iters is the strength/latency SWEET SPOT** (tied with 1800, ~1s/move) → the ship target for live play. This REVISES the earlier "no plateau / compute-elastic" claim (that extrapolated from 150→600). **The search-budget lever is now TAPPED OUT** — next strength must come from history threading (ADR-0011), a better leaf, or the learned route (ADR-0010), NOT more iterations. Lineage: rollout-leaf ISMCTS beat `pimcStaticBot` ~82% (2026-06-26); the v2 thesis (search + belief + good leaf TOGETHER) is validated. Cost: ~0.6–2 s/move (fine for the strength-first campaign + for actual human play). Campaign: "maximize strength, long haul, final product only, do NOT wire into the app" (human, 2026-06-26). Instruments: parallel eval (`pnpm eval`) + Bradley-Terry ladder (`pnpm ladder`). External benchmark scoped (OpenGuanDan + DanZero), still needs the human's machine.**
 
-## ⚠️ Live remote box (2026-06-30) — Hetzner Cloud `178.156.158.230`, 8 vCPU, root ssh, repo at `~/guandan`
-Heavy evals run here, headless in tmux (survives ssh/dev-machine crashes). **It bills while alive — delete it in the Hetzner console when idle.** Full ops playbook + gotchas in `tools/remote/README.md`. As of this update, the Path A tribute A/B (`ismcts-rollout-hist` vs `-nohist`, n=24) is running on it.
+## 🪦 Remote box DELETED (2026-07-14) — was Hetzner Cloud `178.156.158.230`, 8 vCPU
+The human deleted it after the task-9 diagnosis was captured; everything of value was collected
+(`box-results/`, `tools/data/`). **There is no live box.** Re-provision a fresh one via
+`tools/remote/setup.sh` (~10 min) when the next heavy run (e.g. round-2 expert iteration) needs
+it, then update the live-box block in `tools/remote/README.md` with the new IP.
 
 ## Current focus (2026-06-30) — past the budget plateau; the information axis is the open question
 Search budget is **solved** (knee ~1200–1800; ship 1200). Started the **information axis** (history threading, ADR-0011, Path A): built it; the engine stays pure, the arena threads a public play/pass/tribute record into `Observation.history`. **Results so far are sobering and reframed the problem:**

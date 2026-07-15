@@ -5,7 +5,14 @@ should run them on a **cloud CPU box**, not the dev machine (ADR-0009). The harn
 Node + tsx — it runs anywhere.
 
 ## ⚠️ Current live box (EPHEMERAL — verify/update/delete this block when the box changes)
-- **Host:** `178.156.158.230` — Hetzner Cloud, login `root`, **RE-PROVISIONED 2026-07-01** (the
+- **NO LIVE BOX — deleted by the human 2026-07-14** (after the task-9 diagnosis was captured;
+  everything of value is in `box-results/` + `tools/data/`). For the next heavy run, provision a
+  fresh server per "Workflow" below, then rewrite this block with the new IP. A fresh box needs:
+  the dev machine's SSH pubkey in `authorized_keys`, stale `known_hosts` entries cleared (new host
+  key), and — if the IP changed — the `box-sync.yml`/`box-exec.yml` workflows updated (they
+  hardcode the host) so the Actions bridge keeps working.
+- The `178.156.158.230` in the examples below is the DEAD box's IP — substitute the new one.
+- **Previous host:** `178.156.158.230` — Hetzner Cloud, login `root`, **RE-PROVISIONED 2026-07-01** (the
   2026-06-28 box at the same IP was deleted; host key changed — clear stale `known_hosts` entries).
 - **SSH key:** the dev machine's `~/.ssh/id_ed25519.pub` must be in the box's
   `/root/.ssh/authorized_keys` (a fresh box does NOT have it — add via the Hetzner web console).

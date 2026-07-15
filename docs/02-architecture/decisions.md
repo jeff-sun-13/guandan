@@ -6,10 +6,16 @@ Append-only. Newest at top. Each entry: date, decision, why, alternatives, statu
 ## ADR-0016 — Belief = policy-likelihood weighting of determinized worlds (the apprentice's second job)
 **Date:** 2026-07-09 · **Status:** Built; **GATE FAILED 2026-07-10** (−0.1325 pts/deal, z=−3.66
 @1400 — the pooled likelihood sampler makes the champion WORSE; tribute pins on top read null,
-+0.012 z=0.35 @1200). Diagnosis running per the pre-registered revisit: the challenger bundled the
++0.012 z=0.35 @1200). Diagnosis run per the pre-registered revisit: the challenger bundled the
 likelihood SIGNAL with a fresh-worlds→reused-pool MECHANISM switch (ESS p50 ≈ 17 effective worlds
-vs ~600 fresh before) — `run-plb-diag.sh` separates them (plb-u: pool+uniform weights; plb-r:
+vs ~600 fresh before) — `run-plb-diag.sh` separated them (plb-u: pool+uniform weights; plb-r:
 likelihood+refresh; plb-soft: flattened posterior). Park only if all three read negative.
+**PARKED 2026-07-14 — all three arms read negative** (`box-results/plb-diag.log`, 1200 deals
+each): plb-u −0.0567 z=−1.42 (pool alone trends harmful, ns); plb-r −0.1117 z=−2.92 (diversity
+restored, failure replicates — refresh not adopted); plb-soft −0.0446 z=−1.15. Pool cost + a
+signal cost that scales with signal strength; nothing recovers to parity. Caveat: the signal was
+only ever measured through a pooled vehicle (fresh-world scoring rejected on cost, never read).
+Reopen with a round-2 net or a cheaper fresh-world likelihood path. Code stays built + tested.
 **Context:** The champion's belief is a weak instrument: 6 candidate worlds reweighted by ONE
 hand-coded binary signal (current-trick pass plausibility). Cross-trick extensions of that signal
 measured neutral-to-harmful (ADR-0011 parked), and the diagnosis stood: the *sampling vehicle*
