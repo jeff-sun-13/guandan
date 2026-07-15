@@ -4,6 +4,17 @@ Surprises, footguns, and hard-won lessons. Append liberally — a 30-second note
 future agent (or the human) an hour. Newest at top. Include the date.
 
 ---
+## 2026-07-14 — Box deleted with results "uncollected" — the sync bridge had already saved them; check origin/main first
+- The task-9 diagnosis finished 07-11 but was never read; the human deleted the box 07-14. Looked
+  lost — but the 6-hourly `box-sync.yml` had committed `plb-diag.log` to **origin/main** days
+  earlier; the local checkout was just behind. **Lesson: before declaring box results lost (or
+  SSHing at all), `git fetch` and check origin/main for box-sync commits.**
+- Flip side: with the box dead, the scheduled sync commits a NOISE commit every 6 h forever — the
+  status file's `synced:` timestamp always changes, so "commit if changed" always fires. The cron
+  is now commented out in `box-sync.yml` (workflow_dispatch kept); re-enable it + update the
+  hardcoded `BOX:` IP in BOTH box-sync.yml and box-exec.yml when a new box goes up.
+
+---
 ## 2026-07-02 — Claude cloud sessions CANNOT SSH anywhere; the GitHub Actions box-sync bridge is the way
 - Phone/web Claude Code sessions run in a sandbox whose ONLY egress is HTTP/HTTPS through a
   TLS-re-terminating proxy: raw TCP (SSH port 22) is silently dropped, and CONNECT to the box's IP
