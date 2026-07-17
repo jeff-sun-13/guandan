@@ -4,6 +4,15 @@ Surprises, footguns, and hard-won lessons. Append liberally — a 30-second note
 future agent (or the human) an hour. Newest at top. Include the date.
 
 ---
+## 2026-07-15 — Browser-driving the web app on this machine: playwright-core + system Edge (no chromium-cli)
+`chromium-cli` is not installed here and Playwright's own browser download is unnecessary: the dev
+machine has Edge at `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`. `npm i
+playwright-core` (tiny, no browser payload) + `chromium.launch({ executablePath: <edge>, headless:
+true })` drives the Vite dev server fine — used to verify the bot-worker integration (ADR-0017).
+Selectors that matter: `.controls-feedback` (turn state), `.seat-thinking`, `.card-clickable`,
+`button.btn-play`. StrictMode double-mounts the worker in dev; the id-guard in `useGuandanGame.ts`
+makes that harmless — don't "fix" it by dropping StrictMode.
+
 ## 2026-07-14 — Box deleted with results "uncollected" — the sync bridge had already saved them; check origin/main first
 - The task-9 diagnosis finished 07-11 but was never read; the human deleted the box 07-14. Looked
   lost — but the 6-hourly `box-sync.yml` had committed `plb-diag.log` to **origin/main** days

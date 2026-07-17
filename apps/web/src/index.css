@@ -52,6 +52,20 @@ body {
   margin: 0;
   letter-spacing: 0.02em;
 }
+.topbar-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.select {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
 .dot {
   color: var(--accent);
 }

@@ -4,6 +4,30 @@ Append-only, newest at top. One entry per working session. Format:
 `## YYYY-MM-DD — short title` then bullets of what changed and why.
 
 ---
+## 2026-07-15 — Champion wired into the web app (Web Worker, ADR-0017); browser-verified
+The human called the integration step ("get the current best bots in the website and test it") —
+research iteration (round-2 EI etc.) deliberately paused, to resume later.
+- **New `apps/web/src/game/bot-worker.ts` + `bot-protocol.ts`:** bots compute off the main thread.
+  Configs mirror the eval registry: `best` = `ismcts-rollout-huge` (THE champion, 1800 iters,
+  ~2 s/move), `fast` = `ismcts-rollout-1200` (the knee, ~1 s/move), `easy` = heuristic v1. The
+  whole bots/engine stack bundled into the worker unchanged (pure TS, no I/O; the belief sampler's
+  documented no-history fallback covers the web observation path).
+- **`useGuandanGame.ts`:** the synchronous main-thread `stepBot` + timer is gone; each bot turn
+  posts (obs, legal) to the worker and applies the returned move under id + snapshot-state guards
+  (stale responses from superseded games/difficulty switches are dropped). 750 ms floor keeps
+  instant moves watchable. Bot RNG lives in the worker; the match RNG deals as before.
+- **UI:** topbar `Bots:` selector (best/fast/easy, defaults best) — makes the outstanding
+  2 s-vs-1 s latency call a lived choice in-app. Inline SVG favicon (was a console 404).
+- **Verified:** typecheck + all tests green (engine+bots suites unchanged), `vite build` emits the
+  worker as its own chunk, and a headless-Edge drive of the real dev server played a deal: human
+  led 3♦ → Opp beat it in ~1 s of real search, Partner played a wild-completed straight flush,
+  "…thinking" showed while the UI stayed interactive, difficulty switch to `easy` dropped replies
+  to the 750 ms floor, zero console errors. (Test rig: `playwright-core` + system Edge headless —
+  `chromium-cli` unavailable on this machine.)
+- Champion move latency on the dev machine measured ~0.7–1.5 s in-browser (faster than the box's
+  ~2 s — better single-core). Speed–strength selector makes the difference directly feelable.
+
+---
 ## 2026-07-14 — Task 9 diagnosis read: all three arms NEGATIVE → policy-likelihood belief PARKED; box deleted
 Diagnosis finished on the box 2026-07-11 ~07:12 UTC (`PLBDIAG_COMPLETE`); the 6-hourly box-sync
 captured `box-results/plb-diag.log` before the human deleted the box 2026-07-14 (today's sync

@@ -2,8 +2,26 @@
 
 **Single source of truth for "where are we right now." Update this every session.**
 
-_Last updated: 2026-07-14: task 9 diagnosis read — ALL THREE ARMS NEGATIVE → policy-likelihood
-belief PARKED under the current net (ADR-0016). Box DELETED by the human; nothing running anywhere._
+_Last updated: 2026-07-15: CHAMPION WIRED INTO THE WEB APP (ADR-0017) — the human called the
+integration step; research iteration paused, to resume later. No compute running anywhere._
+
+## 🎮 CHAMPION IN THE WEB APP (2026-07-15) — bots run in a Web Worker; browser-verified
+The human directed: pause iteration, "get the current best bots in the website and test it."
+Done and verified end-to-end (ADR-0017, changelog 2026-07-15):
+- **The web app now plays the champion.** New `apps/web/src/game/bot-worker.ts` computes bot moves
+  off the main thread (the ~1–2 s searches would freeze the UI). Topbar selector: `best` =
+  `ismcts-rollout-huge` (1800 iters, default), `fast` = `ismcts-rollout-1200` (~1 s/move), `easy` =
+  heuristic v1 — configs mirror `tools/registry.ts`, so web play is the measured thing. The 2 s-vs-1 s
+  latency decision that was "on the human at integration time" is now a selector he can feel out live.
+- **Verified in a real browser** (headless Edge driving the dev server): champion answered in
+  ~0.7–1.5 s/move on the dev machine (faster than the box's ~2 s), UI stayed interactive while
+  seats showed "…thinking", difficulty switch works, zero console errors; typecheck + all tests +
+  `vite build` green. Manual play-test by the human is the remaining nicety.
+- **Not wired (deliberately):** history threading into the web controller (both belief lanes gated
+  null/harmful — nothing measured is lost; see ADR-0017 for the revisit condition), match-aware
+  objective (gated null), endgame solver in rollouts (resolved null 2026-07-09).
+**Research campaign state is unchanged below** — next lever when iteration resumes: round-2 expert
+iteration (needs a fresh box + the human's go), task-10 pair conventions (needs the human).
 
 ## 🏁 TASK 9 DIAGNOSIS READ (2026-07-14) — all arms negative → PARKED; box DELETED, results all collected
 The 3-arm diagnosis finished on the box 2026-07-11 ~07:12 UTC (`PLBDIAG_COMPLETE`); the box-sync

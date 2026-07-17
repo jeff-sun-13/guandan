@@ -1,4 +1,5 @@
 import { type Player } from "@guandan/engine";
+import { type Difficulty } from "./game/bot-protocol";
 import { useGuandanGame } from "./game/useGuandanGame";
 import { Table } from "./components/Table";
 import { Hand } from "./components/Hand";
@@ -19,9 +20,21 @@ export function App() {
         <h1>
           掼蛋 <span className="dot">·</span> Guandan
         </h1>
-        <button className="btn btn-ghost small" onClick={g.newGame}>
-          New game
-        </button>
+        <div className="topbar-actions">
+          <select
+            className="select"
+            value={g.difficulty}
+            onChange={(e) => g.setDifficulty(e.target.value as Difficulty)}
+            aria-label="Bot strength"
+          >
+            <option value="best">Bots: best (~2 s)</option>
+            <option value="fast">Bots: fast (~1 s)</option>
+            <option value="easy">Bots: easy</option>
+          </select>
+          <button className="btn btn-ghost small" onClick={g.newGame}>
+            New game
+          </button>
+        </div>
       </header>
 
       {tribute && (

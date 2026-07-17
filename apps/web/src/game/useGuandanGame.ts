@@ -1,14 +1,13 @@
-// The game controller. Holds the engine/match state, drives bot turns on a timer (so plays are
-// watchable and the UI never blocks), and exposes a small view + actions to the components.
+// The game controller. Holds the engine/match state, drives bot turns, and exposes a small
+// view + actions to the components.
 //
 // The engine owns all rules; this hook only sequences deals/turns and translates the human's
 // card selection into an engine Move. Human is always seat 0 (bottom of the table).
 //
-// NOTE (deliberate M1 simplification): bots run on the main thread with a delay, not in a Web
-// Worker. v0 bots compute instantly so this is fine and ships faster; when v2 (search) lands,
-// move `stepBot` behind a worker — the async boundary is already isolated here. Also, tribute
-// (including the human's) is auto-resolved with the engine's default policy and shown, rather
-// than prompting the human to choose a return card. Both are tracked in docs.
+// Bot moves are computed in a Web Worker (bot-worker.ts, ADR-0017): the search bots burn ~1–2 s
+// of CPU per decision, which would freeze the UI on the main thread. Each bot turn ships
+// (observation, legal moves) to the worker and applies the move it returns, with a floor delay
+// so instant decisions (forced moves, the easy bot) stay watchable.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -39,11 +38,12 @@ import {
   planTribute,
   defaultReturnCard,
 } from "@guandan/engine";
-import { heuristicBot } from "@guandan/bots";
 import { sortHandForDisplay } from "./format";
+import type { Difficulty, MoveRequest, MoveResponse } from "./bot-protocol";
 
 export const HUMAN: Player = 0;
-const BOT_DELAY_MS = 750;
+/** Floor on a bot turn's visible duration, so instant decisions remain watchable. */
+const BOT_MIN_DELAY_MS = 750;
 
 export type Status = "playing" | "tribute" | "dealOver" | "matchOver";
 
@@ -287,12 +287,6 @@ function applyLogged(snap: Snapshot, seat: Player, move: Move): Snapshot {
   return afterMove({ ...snap, board }, next);
 }
 
-function stepBot(snap: Snapshot): Snapshot {
-  const seat = snap.deal.toAct;
-  const move = heuristicBot(observe(snap.deal, seat), legalMoves(snap.deal, seat), snap.match.rng);
-  return applyLogged(snap, seat, move);
-}
-
 // --- the hook ----------------------------------------------------------------
 
 /** Bucket key for auto rank-stacks: jokers stack with their own kind, others by rank. */
@@ -366,12 +360,55 @@ export function useGuandanGame(initialSeed = 1) {
       ? snap.deal.toAct
       : null;
 
-  // Drive bot turns: whenever it's a bot's turn, play one move after a short, watchable delay.
+  // Which bot fills the three non-human seats (bot-worker.ts maps this to a registry config).
+  const [difficulty, setDifficulty] = useState<Difficulty>("best");
+
+  // The bot worker, created once per mount. Requests carry a monotonic id; only the response to
+  // the NEWEST request is ever applied, so a terminated/superseded search can't corrupt the game.
+  const workerRef = useRef<Worker | null>(null);
+  const reqIdRef = useRef(0);
   useEffect(() => {
-    if (thinkingSeat === null) return;
-    const id = setTimeout(() => setSnap((s) => (s.deal.toAct === HUMAN ? s : stepBot(s))), BOT_DELAY_MS);
-    return () => clearTimeout(id);
-  }, [snap, thinkingSeat]);
+    const w = new Worker(new URL("./bot-worker.ts", import.meta.url), { type: "module" });
+    workerRef.current = w;
+    return () => {
+      workerRef.current = null;
+      w.terminate();
+    };
+  }, []);
+
+  // Drive bot turns: ship the acting seat's observation to the worker, apply the returned move.
+  // The search itself provides the "thinking" pause (~1–2 s); a floor keeps instant moves visible.
+  useEffect(() => {
+    const w = workerRef.current;
+    if (thinkingSeat === null || !w) return;
+    const seat = thinkingSeat;
+    const id = ++reqIdRef.current;
+    const sentAt = performance.now();
+    let timer: number | undefined;
+
+    const onMessage = (e: MessageEvent<MoveResponse>) => {
+      if (e.data.id !== id) return; // response to a superseded request — drop it
+      w.removeEventListener("message", onMessage);
+      const wait = Math.max(0, BOT_MIN_DELAY_MS - (performance.now() - sentAt));
+      timer = window.setTimeout(() => {
+        setSnap((s) =>
+          s.status === "playing" && s.deal.toAct === seat ? applyLogged(s, seat, e.data.move) : s,
+        );
+      }, wait);
+    };
+    w.addEventListener("message", onMessage);
+    const req: MoveRequest = {
+      id,
+      difficulty,
+      obs: observe(snap.deal, seat),
+      legal: legalMoves(snap.deal, seat),
+    };
+    w.postMessage(req);
+    return () => {
+      w.removeEventListener("message", onMessage);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [snap, thinkingSeat, difficulty]);
 
   // A new/changed selection resets the ambiguity pick back to the default (weakest reading).
   useEffect(() => {
@@ -546,6 +583,8 @@ export function useGuandanGame(initialSeed = 1) {
     selectedCards,
     isHumanTurn,
     thinkingSeat,
+    difficulty,
+    setDifficulty,
     selectionMove,
     interpretations,
     chosenKey: chosenInterp?.key ?? null,

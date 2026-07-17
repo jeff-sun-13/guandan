@@ -3,6 +3,36 @@
 Append-only. Newest at top. Each entry: date, decision, why, alternatives, status.
 
 ---
+## ADR-0017 — Search bots run in a Web Worker; the champion is wired into the web app (supersedes ADR-0005)
+**Date:** 2026-07-15 · **Status:** Accepted (built, tested, browser-verified)
+**Context:** The human called the integration step ("get the current best bots in the website").
+The champion `ismcts-rollout-huge` (1800 iters + rollout leaf + belief sampler) burns ~1–2 s of CPU
+per decision; ADR-0005's main-thread-with-a-timer approach would freeze every tap and animation for
+the whole search. The engine/bots stack is pure TS with no I/O, so it bundles into a worker
+unchanged, and `belief.ts` already falls back to current-trick-only inference when no history is
+threaded — exactly the web app's situation (the arena's history threading is NOT wired into the web
+controller; per ADR-0011/0016 both history lanes measured neutral-to-harmful anyway, so nothing
+gated-in is lost).
+**Decision:** `apps/web/src/game/bot-worker.ts` (a Vite module worker) owns bot instances; the
+controller posts `(id, difficulty, observation, legalMoves)` per bot turn and applies the returned
+move. Requests carry a monotonic id — only the response matching the newest request is applied, and
+a snapshot guard (`status === "playing" && toAct === seat`) protects against stale application. A
+750 ms floor keeps instant decisions (forced moves, the easy bot) watchable. Bot decisions draw
+from the worker's own fixed-seed RNG; the match RNG stays on the main thread purely for dealing.
+Difficulties mirror `tools/registry.ts` so web play is the measured thing: `best` =
+`ismcts-rollout-huge` (~2 s/move, the champion), `fast` = `ismcts-rollout-1200` (the budget-curve
+knee, ~1 s/move, −0.17 pts/deal vs best), `easy` = heuristic v1. The topbar selector defaults to
+`best`; the outstanding 2 s-vs-1 s latency decision is now a lived choice in the UI rather than a
+config constant.
+**Alternatives:** keep bots on the main thread (freezes the UI for seconds — rejected); one worker
+per bot seat (no benefit — turns are strictly sequential); wire the arena's history threading into
+the web controller for the tribute-pin lane (deferred — the lane gated null individually, and it
+would couple the controller to `recordMove`'s bookkeeping before it pays measured rent).
+**Consequences:** the web app now plays the strongest measured bot at every non-human seat; bot
+strength changes land by editing one config map in `bot-worker.ts`. The QoL simplification of
+ADR-0005 is retired.
+
+---
 ## ADR-0016 — Belief = policy-likelihood weighting of determinized worlds (the apprentice's second job)
 **Date:** 2026-07-09 · **Status:** Built; **GATE FAILED 2026-07-10** (−0.1325 pts/deal, z=−3.66
 @1400 — the pooled likelihood sampler makes the champion WORSE; tribute pins on top read null,
